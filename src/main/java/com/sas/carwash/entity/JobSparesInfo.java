@@ -14,6 +14,7 @@ public class JobSparesInfo {
 	private String sparesAndLabour;
 	private BigDecimal qty;
 	private BigDecimal rate;
+	private BigDecimal discount;
 	private BigDecimal amount;
 	private BigDecimal gstPercentage;
 	private BigDecimal gstAmount;

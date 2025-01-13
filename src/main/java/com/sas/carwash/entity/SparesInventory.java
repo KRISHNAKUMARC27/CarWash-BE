@@ -30,13 +30,15 @@ public class SparesInventory implements Serializable {
 	private BigDecimal qty;
 	private BigDecimal sellRate;
 	private BigDecimal amount;
+	private BigDecimal cgst;
+	private BigDecimal sgst;
 	private BigDecimal minThresh;
 	private LocalDateTime minThreshDate;
 	private LocalDateTime updateDate;
 
 	private String rack;
 	private String misc1;
-	private String misc2; // Stores Units type
+	private String units; // Stores Units type
 	private String misc3;
 
 	@Version

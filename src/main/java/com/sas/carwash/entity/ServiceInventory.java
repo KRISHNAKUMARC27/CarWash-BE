@@ -29,7 +29,7 @@ public class ServiceInventory implements Serializable {
 	private BigDecimal cgst;
 	private BigDecimal sgst;
 	
-	private String misc1;
+	private String hsnCode;
 	private String misc2;
 	private String misc3;
 

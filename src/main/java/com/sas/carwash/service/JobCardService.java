@@ -47,10 +47,13 @@ import com.sas.carwash.entity.JobCardCounters;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.JobSparesInfo;
 import com.sas.carwash.entity.JobVehiclePhotos;
+import com.sas.carwash.entity.ServiceInventory;
 import com.sas.carwash.entity.SparesInventory;
 import com.sas.carwash.repository.JobCardRepository;
 import com.sas.carwash.repository.JobSparesRepository;
 import com.sas.carwash.repository.JobVehiclePhotosRepository;
+import com.sas.carwash.repository.ServiceInventoryRepository;
+import com.sas.carwash.repository.SparesInventoryRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +66,8 @@ public class JobCardService {
 	private final JobCardRepository jobCardRepository;
 	private final JobSparesRepository jobSparesRepository;
 	private final JobVehiclePhotosRepository jobVehiclePhotosRepository;
+	private final ServiceInventoryRepository serviceInventoryRepository;
+	private final SparesInventoryRepository sparesInventoryRepository;
 	private final SparesService sparesService;
 	private final EmailService emailService;
 
@@ -278,8 +283,8 @@ public class JobCardService {
 				}
 
 				// Update the units field from misc2
-				if (spares.getMisc2() != null) {
-					jobSparesInfo.setUnits(spares.getMisc2());
+				if (spares.getUnits() != null) {
+					jobSparesInfo.setUnits(spares.getUnits());
 				}
 				// Handle ADD action
 				if ("ADD".equals(jobSparesInfo.getAction())) {
@@ -361,11 +366,46 @@ public class JobCardService {
 
 		}
 
+		jobSpares = calculateGSTAndUpdateFields(jobSpares);
 		return jobSparesRepository.save(jobSpares);
 	}
 
 	private JobSpares calculateGSTAndUpdateFields(JobSpares jobSpares) {
 
+		for (JobSparesInfo jobSparesInfo : jobSpares.getJobServiceInfo()) {
+			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
+					() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));
+			
+			BigDecimal totalGstPercentage = service.getCgst().add(service.getSgst());
+			jobSparesInfo.setGstPercentage(totalGstPercentage);
+			BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage).divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
+			jobSparesInfo.setGstAmount(totalGstAmount);
+		}
+		for (JobSparesInfo jobSparesInfo : jobSpares.getJobSparesInfo()) {
+			SparesInventory service = sparesInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
+					() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));
+			
+			BigDecimal totalGstPercentage = service.getCgst().add(service.getSgst());
+			jobSparesInfo.setGstPercentage(totalGstPercentage);
+			BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage).divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
+			jobSparesInfo.setGstAmount(totalGstAmount);
+		}
+		
+		BigDecimal totalGstSparesValue = jobSpares.getJobSparesInfo() != null
+				? jobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
+						.reduce(BigDecimal.ZERO, BigDecimal::add)
+				: BigDecimal.ZERO;
+
+		BigDecimal totalGstServiceValue = jobSpares.getJobServiceInfo() != null
+				? jobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
+						.reduce(BigDecimal.ZERO, BigDecimal::add)
+				: BigDecimal.ZERO;
+		
+		BigDecimal grandGstTotal = totalGstSparesValue.add(totalGstServiceValue);
+		jobSpares.setGrandTotalWithGST(grandGstTotal);
+		jobSpares.setTotalSparesValueWithGST(totalGstSparesValue);
+		jobSpares.setTotalServiceValueWithGST(totalGstServiceValue);
+		
 		return jobSpares;
 	}
 
