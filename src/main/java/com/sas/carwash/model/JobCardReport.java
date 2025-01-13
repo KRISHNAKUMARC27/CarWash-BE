@@ -11,7 +11,7 @@ import lombok.Data;
 public class JobCardReport {
 
 	private Integer jobId;
-	private Integer invoiceId;
+	//private Integer invoiceId;
 	private String jobStatus;
 	private LocalDateTime jobCloseDate;
 	private String vehicleRegNo;

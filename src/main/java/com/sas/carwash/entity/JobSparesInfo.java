@@ -15,6 +15,8 @@ public class JobSparesInfo {
 	private BigDecimal qty;
 	private BigDecimal rate;
 	private BigDecimal amount;
+	private BigDecimal gstPercentage;
+	private BigDecimal gstAmount;
 	private String action;
 	private String units;
 }

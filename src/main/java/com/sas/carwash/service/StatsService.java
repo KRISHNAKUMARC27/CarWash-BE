@@ -156,7 +156,7 @@ public class StatsService {
 			weekTotalSparesValueSum = weekTotalSparesValueSum
 					.add(jobSpares.getTotalSparesValue() != null ? jobSpares.getTotalSparesValue() : BigDecimal.ZERO);
 			weekTotalLabourValueSum = weekTotalLabourValueSum
-					.add(jobSpares.getTotalLabourValue() != null ? jobSpares.getTotalLabourValue() : BigDecimal.ZERO);
+					.add(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO);
 			weekGrandTotalSum = weekGrandTotalSum
 					.add(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO);
 		}
@@ -219,7 +219,7 @@ public class StatsService {
 			dayTotalSparesValueSum = dayTotalSparesValueSum
 					.add(jobSpares.getTotalSparesValue() != null ? jobSpares.getTotalSparesValue() : BigDecimal.ZERO);
 			dayTotalLabourValueSum = dayTotalLabourValueSum
-					.add(jobSpares.getTotalLabourValue() != null ? jobSpares.getTotalLabourValue() : BigDecimal.ZERO);
+					.add(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO);
 			dayGrandTotalSum = dayGrandTotalSum
 					.add(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO);
 		}
@@ -299,7 +299,7 @@ public class StatsService {
 			totalSparesValueSum = totalSparesValueSum
 					.add(jobSpares.getTotalSparesValue() != null ? jobSpares.getTotalSparesValue() : BigDecimal.ZERO);
 			totalLabourValueSum = totalLabourValueSum
-					.add(jobSpares.getTotalLabourValue() != null ? jobSpares.getTotalLabourValue() : BigDecimal.ZERO);
+					.add(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO);
 			grandTotalSum = grandTotalSum
 					.add(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO);
 		}
@@ -375,7 +375,7 @@ public class StatsService {
 			totalSparesValueSum = totalSparesValueSum
 					.add(jobSpares.getTotalSparesValue() != null ? jobSpares.getTotalSparesValue() : BigDecimal.ZERO);
 			totalLabourValueSum = totalLabourValueSum
-					.add(jobSpares.getTotalLabourValue() != null ? jobSpares.getTotalLabourValue() : BigDecimal.ZERO);
+					.add(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO);
 			grandTotalSum = grandTotalSum
 					.add(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO);
 		}
@@ -683,8 +683,8 @@ public class StatsService {
 			if (job.getJobCloseDate() != null && !job.getGrandTotal().equals(BigDecimal.ZERO)) {
 				totalRevenue = totalRevenue.add(job.getGrandTotal());
 			}
-			if (job.getJobCloseDate() != null && !job.getTotalLabourValue().equals(BigDecimal.ZERO)) {
-				totalLabourValueSum = totalLabourValueSum.add(job.getTotalLabourValue());
+			if (job.getJobCloseDate() != null && !job.getTotalServiceValue().equals(BigDecimal.ZERO)) {
+				totalLabourValueSum = totalLabourValueSum.add(job.getTotalServiceValue());
 			}
 			if (job.getJobCloseDate() != null && !job.getTotalSparesValue().equals(BigDecimal.ZERO)) {
 				totalSparesSum = totalSparesSum.add(job.getTotalSparesValue());
@@ -974,14 +974,14 @@ public class StatsService {
 					Map<String, BigDecimal> currentTotal = yearlyJobCards.get(month);
 					currentTotal.put("SPARES",
 							currentTotal.getOrDefault("SPARES", BigDecimal.ZERO).add(job.getTotalSparesValue()));
-					currentTotal.put("LABOR",
-							currentTotal.getOrDefault("LABOR", BigDecimal.ZERO).add(job.getTotalLabourValue()));
-					currentTotal.put("CONSUMABLES", currentTotal.getOrDefault("CONSUMABLES", BigDecimal.ZERO).add(
-							job.getTotalConsumablesValue() != null ? job.getTotalConsumablesValue() : BigDecimal.ZERO));
-					currentTotal.put("EXTERNALWORK",
-							currentTotal.getOrDefault("EXTERNALWORK", BigDecimal.ZERO)
-									.add(job.getTotalExternalWorkValue() != null ? job.getTotalExternalWorkValue()
-											: BigDecimal.ZERO));
+					currentTotal.put("SERVICE",
+							currentTotal.getOrDefault("SERVICE", BigDecimal.ZERO).add(job.getTotalServiceValue()));
+//					currentTotal.put("CONSUMABLES", currentTotal.getOrDefault("CONSUMABLES", BigDecimal.ZERO).add(
+//							job.getTotalConsumablesValue() != null ? job.getTotalConsumablesValue() : BigDecimal.ZERO));
+//					currentTotal.put("EXTERNALWORK",
+//							currentTotal.getOrDefault("EXTERNALWORK", BigDecimal.ZERO)
+//									.add(job.getTotalExternalWorkValue() != null ? job.getTotalExternalWorkValue()
+//											: BigDecimal.ZERO));
 
 					yearlyJobCards.put(month, currentTotal);
 				}
@@ -1017,16 +1017,18 @@ public class StatsService {
 			JobSpares jobSpares = jobSparesMap.get(jobCard.getId());
 			JobCardReport jobCardReport = null;
 			if (jobSpares != null) {
-				jobCardReport = JobCardReport.builder().jobId(jobCard.getJobId()).invoiceId(jobCard.getInvoiceId())
+				jobCardReport = JobCardReport.builder().jobId(jobCard.getJobId())
+//						.invoiceId(jobCard.getInvoiceId())
 						.jobStatus(jobCard.getJobStatus()).jobCloseDate(jobCard.getJobCloseDate())
 						.vehicleRegNo(jobCard.getVehicleRegNo()).totalSparesValue(jobSpares.getTotalSparesValue())
-						.totalConsumablesValue(jobSpares.getTotalConsumablesValue() != null ? jobSpares.getTotalConsumablesValue() : BigDecimal.ZERO)
-						.totalExternalWorkValue(jobSpares.getTotalExternalWorkValue() != null ? jobSpares.getTotalExternalWorkValue() : BigDecimal.ZERO)
-						.totalLabourValue(jobSpares.getTotalLabourValue() != null ? jobSpares.getTotalLabourValue() : BigDecimal.ZERO)
+						.totalConsumablesValue(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO)
+//						.totalExternalWorkValue(jobSpares.getTotalExternalWorkValue() != null ? jobSpares.getTotalExternalWorkValue() : BigDecimal.ZERO)
+//						.totalLabourValue(jobSpares.getTotalLabourValue() != null ? jobSpares.getTotalLabourValue() : BigDecimal.ZERO)
 						.grandTotal(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO)
 						.build();
 			} else {
-				jobCardReport = JobCardReport.builder().jobId(jobCard.getJobId()).invoiceId(jobCard.getInvoiceId())
+				jobCardReport = JobCardReport.builder().jobId(jobCard.getJobId())
+//						.invoiceId(jobCard.getInvoiceId())
 						.jobStatus(jobCard.getJobStatus()).jobCloseDate(jobCard.getJobCloseDate())
 						.vehicleRegNo(jobCard.getVehicleRegNo()).build();
 			}
