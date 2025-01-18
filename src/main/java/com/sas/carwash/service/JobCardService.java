@@ -94,6 +94,29 @@ public class JobCardService {
 		return counter.getSequenceValue();
 	}
 
+	public int getNextSequenceForNewSequence(String sequenceName) {
+		// Find the counter document and increment its sequence_value atomically
+		Query query = new Query(Criteria.where("_id").is(sequenceName));
+		JobCardCounters counter = mongoTemplate.findOne(query, JobCardCounters.class);
+
+		if (counter == null) {
+			counter = new JobCardCounters();
+			counter.setId(sequenceName);
+			counter.setSequenceValue(1);
+			mongoTemplate.save(counter);
+		} else {
+			Query updateQuery = new Query(Criteria.where("_id").is(sequenceName));
+			Update update = new Update().inc("sequenceValue", 1);
+			FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
+			counter = mongoTemplate.findAndModify(updateQuery, update, options, JobCardCounters.class);
+			if (counter == null) {
+				throw new RuntimeException("Error incrementing sequence for " + sequenceName);
+			}
+		}
+
+		return counter.getSequenceValue();
+	}
+
 	public int getNextJobCardIdSequenceAsInteger(String sequenceName) {
 
 		int currentYearMonth = Integer.parseInt(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM")));
@@ -131,6 +154,14 @@ public class JobCardService {
 	public List<?> findAll() {
 		return jobCardRepository.findAllByOrderByIdDesc();
 	}
+	
+	public JobCard findById(String id) {
+		return jobCardRepository.findById(id).orElse(null);
+	}
+	
+	public JobCard simpleSave(JobCard jobCard) {
+		return jobCardRepository.save(jobCard);
+	}
 
 	public JobCard save(JobCard jobCard) {
 		jobCard.setJobId(getNextJobCardIdSequenceAsInteger("jobCardId"));
@@ -143,6 +174,14 @@ public class JobCardService {
 		return jobCard;
 	}
 
+	public JobSpares findByIdJobSpares(String id) {
+		return jobSparesRepository.findById(id).orElse(null);
+	}
+	
+	public JobSpares simpleSaveJobSpares(JobSpares jobSpares) {
+		return jobSparesRepository.save(jobSpares);
+	}
+	
 	public List<?> findAllByJobStatus(String status) {
 		return jobCardRepository.findAllByJobStatusOrderByIdDesc(status);
 	}
@@ -375,22 +414,22 @@ public class JobCardService {
 		for (JobSparesInfo jobSparesInfo : jobSpares.getJobServiceInfo()) {
 			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
 					() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));
-			
+			jobSparesInfo.setGstPercentage(service.getCgst());
 			BigDecimal totalGstPercentage = service.getCgst().add(service.getSgst());
-			jobSparesInfo.setGstPercentage(totalGstPercentage);
-			BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage).divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
+			BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage)
+					.divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
 			jobSparesInfo.setGstAmount(totalGstAmount);
 		}
 		for (JobSparesInfo jobSparesInfo : jobSpares.getJobSparesInfo()) {
 			SparesInventory service = sparesInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
 					() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));
-			
+			jobSparesInfo.setGstPercentage(service.getCgst());
 			BigDecimal totalGstPercentage = service.getCgst().add(service.getSgst());
-			jobSparesInfo.setGstPercentage(totalGstPercentage);
-			BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage).divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
+			BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage)
+					.divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
 			jobSparesInfo.setGstAmount(totalGstAmount);
 		}
-		
+
 		BigDecimal totalGstSparesValue = jobSpares.getJobSparesInfo() != null
 				? jobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
 						.reduce(BigDecimal.ZERO, BigDecimal::add)
@@ -400,12 +439,12 @@ public class JobCardService {
 				? jobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
 						.reduce(BigDecimal.ZERO, BigDecimal::add)
 				: BigDecimal.ZERO;
-		
+
 		BigDecimal grandGstTotal = totalGstSparesValue.add(totalGstServiceValue);
 		jobSpares.setGrandTotalWithGST(grandGstTotal);
 		jobSpares.setTotalSparesValueWithGST(totalGstSparesValue);
 		jobSpares.setTotalServiceValueWithGST(totalGstServiceValue);
-		
+
 		return jobSpares;
 	}
 

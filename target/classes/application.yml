@@ -3,3 +3,6 @@ spring:
     name: jm_dms
   main:
     allow-circular-references: true
+    
+config:
+  paymentModes: CASH, UPI, CREDIT, CARD(CREDIT), CARD(DEBIT), BANK TRANSFER
