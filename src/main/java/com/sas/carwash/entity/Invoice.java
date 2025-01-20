@@ -33,6 +33,7 @@ public class Invoice implements Serializable {
 	private BigDecimal grandTotal;
 	private BigDecimal pendingAmount;
 	private Boolean creditFlag;
+	private Boolean creditSettledFlag;
 	private LocalDateTime billCloseDate;
 	
 	private Integer jobId;

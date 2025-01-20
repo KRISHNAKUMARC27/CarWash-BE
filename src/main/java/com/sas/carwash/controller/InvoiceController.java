@@ -33,6 +33,11 @@ public class InvoiceController {
 	public List<?> findAll() {
 		return invoiceService.findAll();
 	}
+	
+	@GetMapping("/{id}")
+	public Invoice findById(@PathVariable String id) throws Exception {
+		return invoiceService.findById(id);
+	}
 
 	@PostMapping
 	public Invoice save(@RequestBody Invoice invoice) throws Exception {
@@ -42,6 +47,11 @@ public class InvoiceController {
 	@GetMapping("/jobObjId/{id}")
 	public Invoice findByJobObjId(@PathVariable String id) {
 		return invoiceService.findByJobObjId(id);
+	}
+	
+	@GetMapping("/findByCreditFlag")
+	public List<Invoice> findByCreditFlag() {
+		return invoiceService.findByCreditFlag();
 	}
 
 }

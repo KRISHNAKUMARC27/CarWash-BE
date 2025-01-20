@@ -10,5 +10,6 @@ public interface InvoiceRepository extends MongoRepository<Invoice, String> {
 	
 	List<Invoice> findAllByOrderByIdDesc();
 	Invoice findByJobObjId(String jobObjId);
+	List<Invoice> findByCreditFlagAndCreditSettledFlagOrderByIdDesc(Boolean creditFlag, Boolean creditSettledFlag);
 
 }

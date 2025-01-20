@@ -28,6 +28,10 @@ public class InvoiceService {
 	public Invoice findById(String id) throws Exception {
 		return invoiceRepository.findById(id).orElseThrow(() -> new RuntimeException("Invoice ID not found"));
 	}
+	
+	public List<Invoice> findByCreditFlag() {
+		return invoiceRepository.findByCreditFlagAndCreditSettledFlagOrderByIdDesc(true, false);
+	}
 
 	public Invoice save(Invoice invoice) throws Exception {
 		JobCard jobCard = jobCardService.findById(invoice.getJobObjId());
@@ -42,6 +46,10 @@ public class InvoiceService {
 			invoice.setInvoiceId(jobCardService.getNextSequenceForNewSequence("invoiceId"));
 			invoice.setBillCloseDate(LocalDateTime.now());
 		}
+		invoice.getCreditPaymentList().stream().forEach(credit -> {
+			if(credit.getCreditDate() == null)
+				credit.setCreditDate(LocalDateTime.now());
+		});
 		invoice = invoiceRepository.save(invoice);
 		jobCard.setInvoiceObjId(invoice.getId());
 		jobCardService.simpleSave(jobCard);
