@@ -3,6 +3,7 @@ package com.sas.carwash.entity;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
@@ -41,5 +42,28 @@ public class Invoice implements Serializable {
 	private String ownerPhoneNumber;
 	private String vehicleRegNo;
 	private String vehicleName;
+	
+	public Invoice(Invoice original) {
+	    this.id = original.id;
+	    this.invoiceId = original.invoiceId;
+	    this.jobObjId = original.jobObjId;
+	    this.creditPaymentList = original.creditPaymentList != null
+	            ? new ArrayList<>(original.creditPaymentList) // Shallow copy; deep copy if needed
+	            : null;
+	    this.paymentSplitList = original.paymentSplitList != null
+	            ? new ArrayList<>(original.paymentSplitList) // Shallow copy; deep copy if needed
+	            : null;
+	    this.grandTotal = original.grandTotal != null ? new BigDecimal(original.grandTotal.toString()) : null;
+	    this.pendingAmount = original.pendingAmount != null ? new BigDecimal(original.pendingAmount.toString()) : null;
+	    this.creditFlag = original.creditFlag;
+	    this.creditSettledFlag = original.creditSettledFlag;
+	    this.billCloseDate = original.billCloseDate;
+	    this.jobId = original.jobId;
+	    this.ownerName = original.ownerName;
+	    this.ownerPhoneNumber = original.ownerPhoneNumber;
+	    this.vehicleRegNo = original.vehicleRegNo;
+	    this.vehicleName = original.vehicleName;
+	}
 
+	
 }

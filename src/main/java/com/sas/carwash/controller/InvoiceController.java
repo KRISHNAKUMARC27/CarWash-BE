@@ -16,6 +16,7 @@ import com.sas.carwash.entity.Invoice;
 import com.sas.carwash.entity.LaborCategory;
 import com.sas.carwash.entity.LaborInventory;
 import com.sas.carwash.model.LaborFilter;
+import com.sas.carwash.model.MultiCreditPayment;
 import com.sas.carwash.service.InvoiceService;
 
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,12 @@ public class InvoiceController {
 	@GetMapping("/findByCreditFlag")
 	public List<Invoice> findByCreditFlag() {
 		return invoiceService.findByCreditFlag();
+	}
+	
+	@PostMapping("/multiCreditSettlement")
+	public  MultiCreditPayment multiCreditSettlement(@RequestBody MultiCreditPayment multiCreditPayment) throws Exception {
+		invoiceService.multiCreditSettlement(multiCreditPayment);
+		return multiCreditPayment;
 	}
 
 }
