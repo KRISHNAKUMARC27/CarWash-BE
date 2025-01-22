@@ -78,6 +78,7 @@ public class InvoiceService {
 			invoiceList.add(invoice);
 		}
 		
+		//Sort in ascending order of pending amount because lets try to close small fries earlier.
 		invoiceList.sort(Comparator.comparing(Invoice::getPendingAmount));
 
 		List<Invoice> deepCopiedInvoiceList = invoiceList.stream().map(Invoice::new).collect(Collectors.toList());
