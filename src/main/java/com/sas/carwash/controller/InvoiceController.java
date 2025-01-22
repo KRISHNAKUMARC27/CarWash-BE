@@ -1,6 +1,8 @@
 package com.sas.carwash.controller;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -56,9 +58,8 @@ public class InvoiceController {
 	}
 	
 	@PostMapping("/multiCreditSettlement")
-	public  MultiCreditPayment multiCreditSettlement(@RequestBody MultiCreditPayment multiCreditPayment) throws Exception {
-		invoiceService.multiCreditSettlement(multiCreditPayment);
-		return multiCreditPayment;
+	public  Map<String, String> multiCreditSettlement(@RequestBody MultiCreditPayment multiCreditPayment) throws Exception {
+		return invoiceService.multiCreditSettlement(multiCreditPayment);
 	}
 
 }
