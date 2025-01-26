@@ -1,7 +1,9 @@
 package com.sas.carwash.service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,12 +27,14 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
+import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
-import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.element.AreaBreak;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Image;
@@ -51,12 +55,14 @@ import com.sas.carwash.entity.JobSparesInfo;
 import com.sas.carwash.entity.JobVehiclePhotos;
 import com.sas.carwash.entity.ServiceInventory;
 import com.sas.carwash.entity.SparesInventory;
+import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.InvoiceRepository;
 import com.sas.carwash.repository.JobCardRepository;
 import com.sas.carwash.repository.JobSparesRepository;
 import com.sas.carwash.repository.JobVehiclePhotosRepository;
 import com.sas.carwash.repository.ServiceInventoryRepository;
 import com.sas.carwash.repository.SparesInventoryRepository;
+import com.sas.carwash.utils.NumberToWordsConverter;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -75,6 +81,7 @@ public class JobCardService {
 	private final EmailService emailService;
 	private final InvoiceRepository invoiceRepository;
 	private final MongoTemplate mongoTemplate;
+	private final SpringTemplateEngine templateEngine;
 
 	private String[] emailRecepients = { "krishnakumarc27@gmail.com" };
 
@@ -1152,6 +1159,7 @@ public class JobCardService {
 	}
 
 	public ResponseEntity<?> generateBillPdf(String id) throws Exception {
+
 		JobCard jobCard = jobCardRepository.findById(id).orElse(null);
 		JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
 
@@ -1460,6 +1468,7 @@ public class JobCardService {
 	}
 
 	public ResponseEntity<?> generateInvoicePdf(String id) throws Exception {
+		invoiceData(id);
 		JobCard jobCard = jobCardRepository.findById(id).orElse(null);
 		JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
 
@@ -1542,7 +1551,7 @@ public class JobCardService {
 		document.add(orderInfoTable);
 
 		// Create table for Spares and Labour (with proper headers)
-		Table itemTable = new Table(UnitValue.createPercentArray(new float[] { 5, 60, 5, 10, 10, 10}));
+		Table itemTable = new Table(UnitValue.createPercentArray(new float[] { 5, 60, 5, 10, 10, 10 }));
 		itemTable.setWidth(UnitValue.createPercentValue(100));
 		itemTable.addCell(new Cell().add(new Paragraph("S.No").setTextAlignment(TextAlignment.CENTER).setBold()));
 		itemTable
@@ -1613,11 +1622,12 @@ public class JobCardService {
 		if (jobSpares != null && jobSpares.getJobServiceInfo() != null) {
 			for (JobSparesInfo sparesInfo : jobSpares.getJobServiceInfo()) {
 				if (sparesInfo.getSparesAndLabour() != null) {
-					
+
 					itemTable.addCell(new Cell().setMaxHeight(rowHeight)
 							.add(new Paragraph(String.valueOf(itemIndex++)).setTextAlignment(TextAlignment.CENTER)));
 					itemTable.addCell(new Cell().setMaxHeight(36f).add(
-							new Paragraph(removeJobSparesBracketFieldsAndNullCheck(sparesInfo.getSparesAndLabour())).setFontSize(10)));
+							new Paragraph(removeJobSparesBracketFieldsAndNullCheck(sparesInfo.getSparesAndLabour()))
+									.setFontSize(10)));
 
 					itemTable.addCell(new Cell().setMaxHeight(rowHeight)
 							.add(new Paragraph(sparesInfo.getQty().toString()).setTextAlignment(TextAlignment.RIGHT)));
@@ -1710,6 +1720,111 @@ public class JobCardService {
 		headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
 		return ResponseEntity.ok().headers(headers).contentLength(resource.contentLength())
 				.contentType(MediaType.APPLICATION_PDF).body(resource);
+	}
+
+	public void invoiceData(String id) throws Exception {
+
+		JobCard jobCard = jobCardRepository.findById(id).orElse(null);
+		JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
+		Invoice invoice = invoiceRepository.findById(jobCard.getInvoiceObjId()).orElse(null);
+
+		if (jobCard == null) {
+			throw new Exception("JobCard not found for id " + id);
+		}
+
+		if (jobSpares == null) {
+			throw new Exception("JobSpares not found for id " + id);
+		}
+
+		if (invoice == null) {
+			throw new Exception("Invoice not found for id " + id);
+		}
+
+		String paymentMode = "";
+		for (PaymentSplit payment : invoice.getPaymentSplitList()) {
+			paymentMode = paymentMode + payment.getPaymentMode() + " ";
+		} // NEED to work whether to consider CREDIT list also. Also consider unique value. May be use Set<String>
+
+		Map<String, Object> data = new HashMap<>();
+		data.put("vehNo", jobCard.getVehicleRegNo());
+		data.put("ownerName", jobCard.getOwnerName());
+		data.put("kms", jobCard.getKiloMeters());
+		data.put("invoiceNo", invoice.getInvoiceId());
+		data.put("date", invoice.getBillCloseDate());
+		data.put("mode", paymentMode);
+		data.put("nextFreeCheckKms", jobCard.getKiloMeters() + 1500);
+		data.put("vehicle", jobCard.getVehicleName());
+		data.put("nextServiceKms", jobCard.getKiloMeters() + 3000);
+
+		data.put("totalTaxAmt", jobSpares.getGrandTotalWithGST().subtract(jobSpares.getGrandTotal()));
+		data.put("roundOff", "");
+		data.put("netAmount", invoice.getGrandTotal());
+		data.put("amountInWords", NumberToWordsConverter.convert(invoice.getGrandTotal()));
+
+		Map<BigDecimal, BigDecimal> taxMap = new HashMap<>();
+
+		List<Map<String, Object>> productList = new ArrayList<>();
+		for (int i = 0; i < jobSpares.getJobServiceInfo().size(); i++) {
+			JobSparesInfo jobSparesInfo = jobSpares.getJobServiceInfo().get(i);
+			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElse(null);
+
+			// Update the taxMap
+			BigDecimal gstPercentage = jobSparesInfo.getGstPercentage();
+			BigDecimal amount = jobSparesInfo.getAmount();
+
+			// Add amount to the taxMap for the corresponding gstPercentage
+			taxMap.put(gstPercentage, taxMap.getOrDefault(gstPercentage, BigDecimal.ZERO).add(amount));
+
+			productList.add(Map.of("name", jobSparesInfo.getSparesAndLabour(), "hsnCode",
+					service.getHsnCode() != null ? service.getHsnCode() : "", "qty", jobSparesInfo.getQty(), "rate",
+					jobSparesInfo.getRate(), "gst", gstPercentage.add(gstPercentage) + "%", "discount",
+					jobSparesInfo.getDiscount() != null ? jobSparesInfo.getDiscount() : "", "amount", amount));
+
+		}
+		for (int i = 0; i < jobSpares.getJobSparesInfo().size(); i++) {
+			JobSparesInfo jobSparesInfo = jobSpares.getJobServiceInfo().get(i);
+			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElse(null);
+			// Update the taxMap
+			BigDecimal gstPercentage = jobSparesInfo.getGstPercentage();
+			BigDecimal amount = jobSparesInfo.getAmount();
+
+			// Add amount to the taxMap for the corresponding gstPercentage
+			taxMap.put(gstPercentage, taxMap.getOrDefault(gstPercentage, BigDecimal.ZERO).add(amount));
+
+			productList.add(Map.of("name", jobSparesInfo.getSparesAndLabour(), "hsnCode",
+					service.getHsnCode() != null ? service.getHsnCode() : "", "qty", jobSparesInfo.getQty(), "rate",
+					jobSparesInfo.getRate(), "gst", gstPercentage.add(gstPercentage) + "%", "discount",
+					jobSparesInfo.getDiscount() != null ? jobSparesInfo.getDiscount() : "", "amount", amount));
+
+		}
+
+		data.put("products", productList);
+
+		List<Map<String, Object>> taxList = new ArrayList<>();
+
+		taxMap.forEach((k, v) -> {
+			BigDecimal gstAmount = v.multiply(k).divide(BigDecimal.valueOf(100));
+			taxList.add(Map.of("taxableValue", v, "cgstPercent", k, "cgstAmt", gstAmount, "sgstPercent", k, "sgstAmt",
+					gstAmount, "netPercent", k.add(k) + "%", "amount", gstAmount.add(gstAmount)));
+		});
+		data.put("taxDetails", taxList);
+
+		generateInvoicePdf(data, "invoice.pdf");
+	}
+
+	public void generateInvoicePdf(Map<String, Object> data, String outputPath) throws Exception {
+		// Render HTML with dynamic data
+		Context context = new Context();
+		context.setVariables(data);
+		String htmlContent = templateEngine.process("invoice", context);
+
+		// Convert HTML to PDF
+		try (OutputStream os = new FileOutputStream(outputPath)) {
+			ITextRenderer renderer = new ITextRenderer();
+			renderer.setDocumentFromString(htmlContent);
+			renderer.layout();
+			renderer.createPDF(os);
+		}
 	}
 
 }

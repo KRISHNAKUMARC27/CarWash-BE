@@ -1,23 +1,16 @@
 package com.sas.carwash.controller;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.sas.carwash.entity.Invoice;
-import com.sas.carwash.entity.LaborCategory;
-import com.sas.carwash.entity.LaborInventory;
-import com.sas.carwash.model.LaborFilter;
 import com.sas.carwash.model.MultiCreditPayment;
 import com.sas.carwash.service.InvoiceService;
 
@@ -33,7 +26,7 @@ public class InvoiceController {
 	private final InvoiceService invoiceService;
 
 	@GetMapping
-	public List<?> findAll() {
+	public List<?> findAll() throws Exception {
 		return invoiceService.findAll();
 	}
 	
