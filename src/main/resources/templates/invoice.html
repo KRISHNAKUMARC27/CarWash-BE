@@ -104,6 +104,11 @@ td, th {
 	font-family: Arial, Helvetica, sans-serif;
 	line-height: 0.7;
 }
+
+.page-break {
+    page-break-before: always;
+}
+
 </style>
 </head>
 <body>
@@ -203,6 +208,8 @@ td, th {
 				</table>
 			</td>
 		</tr>
+		<div class="page-break" th:if="${pagebreak}"></div>
+		
 		<tr>
 			<td colspan="2">
 				<table class="collapse-table">

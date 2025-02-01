@@ -1,9 +1,7 @@
 package com.sas.carwash.service;
 
 import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,9 +25,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.thymeleaf.context.Context;
-import org.thymeleaf.spring6.SpringTemplateEngine;
-import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -55,8 +50,6 @@ import com.sas.carwash.entity.JobSparesInfo;
 import com.sas.carwash.entity.JobVehiclePhotos;
 import com.sas.carwash.entity.ServiceInventory;
 import com.sas.carwash.entity.SparesInventory;
-import com.sas.carwash.model.CreditPayment;
-import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.InvoiceRepository;
 import com.sas.carwash.repository.JobCardRepository;
 import com.sas.carwash.repository.JobSparesRepository;
@@ -1818,10 +1811,15 @@ public class JobCardService {
 		}
 
 		while (count < 15) {
-			count++;
-			productList.add(Map.of("sno", "\t", "name", "\t", "hsnCode", "\t", "qty", "\t", "rate", "\t", "gst", "\t", "discount",
+			productList.add(Map.of("sno", "", "name", "", "hsnCode", "\t", "qty", "\t", "rate", "\t", "gst", "\t", "discount",
 					"\t", "amount", "\t"));
+			count++;
 		}
+		
+		if(count > 15 && count < 40) {
+			data.put("pagebreak", true);
+		}
+		
 		productList.add(Map.of("sno", "", "name", "E & OE", "hsnCode", "", "qty", totalQty, "rate", "", "gst", "",
 				"discount", "", "amount", jobSpares.getGrandTotal()));
 
