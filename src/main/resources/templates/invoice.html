@@ -32,16 +32,23 @@ td, th {
 	right: 5px;
 }
 
-.nested-table {
-	width: 100%;
-	border-collapse: collapse;
-	margin-top: 0px;
+/* Remove row borders inside nested-table */
+.nested-table tbody tr td {
+	border-top: none !important;
+	border-bottom: none !important;
+	height: 15px;
+	font-size: 15px;
+	line-height: 0.5;
 }
 
-.nested-table td, .nested-table th {
-	border: 1px solid lightgray;
-	padding: 5px;
-	text-align: left;
+/* Keep only the table's outer border */
+.nested-table {
+	border: 1px solid black;
+}
+
+/* Ensure table headers retain their bottom border */
+.nested-table thead th {
+	border-bottom: 1px solid black;
 }
 
 .collapse-table {
@@ -140,7 +147,7 @@ td, th {
 
 						</tr>
 						<tr>
-							<td style="width: 33%;"><strong>Vechile No:</strong><span
+							<td style="width: 33%;"><strong>Vehicle No:</strong><span
 								th:text="${vehNo}"></span></td>
 							<td style="width: 33%;"><strong>Next Free Check
 									KMs:</strong><span th:text="${nextFreeCheckKms}"></span></td>
@@ -171,7 +178,7 @@ td, th {
 				<table class="nested-table">
 					<thead>
 						<tr>
-							<th style="width: 5%;">S.No</th>
+							<th style="width: 5%;">SNo</th>
 							<th style="width: 50%;">Product Name</th>
 							<th style="width: 10%;">HSN</th>
 							<th style="width: 5%;">Qty</th>
@@ -183,7 +190,7 @@ td, th {
 					</thead>
 					<tbody>
 						<tr th:each="product, indexStat : ${products}">
-							<td th:text="${indexStat.index + 1}"></td>
+							<td th:text="${product.sno}"></td>
 							<td th:text="${product.name}"></td>
 							<td th:text="${product.hsnCode}"></td>
 							<td th:text="${product.qty}"></td>

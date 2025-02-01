@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+td, th {
+	border: 1px solid black;
+	padding: 5px;
+	text-align: left;
+}
+
+.header-row {
+	position: relative;
+	/* Ensure absolute children are positioned relative to this parent */
+	height: 50px; /* Adjust height as needed */
+}
+
+.gstin {
+	position: absolute;
+	top: 5px;
+	left: 5px;
+	font-weight: bold;
+}
+
+.cell {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+}
+
+.nested-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 0px;
+}
+
+.nested-table td, .nested-table th {
+	border: 1px solid lightgray;
+	padding: 5px;
+	text-align: left;
+}
+
+.collapse-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+/* Restrict styles only to immediate children of .collapse-table */
+.collapse-table>tbody>tr>td, .collapse-table>tbody>tr>th {
+	border-top: none;
+	border-bottom: none;
+	border-left: 1px solid black;
+	border-right: 1px solid black;
+	padding: 5px;
+	text-align: left;
+}
+
+/* Remove border-left for the first column */
+.collapse-table>tbody>tr>td:first-child, .collapse-table>tbody>tr>th:first-child
+	{
+	border-left: none;
+}
+
+/* Remove border-right for the last column */
+.collapse-table>tbody>tr>td:last-child, .collapse-table>tbody>tr>th:last-child
+	{
+	border-right: none;
+}
+
+.header {
+	margin-top: 7px;
+	text-align: center;
+	font-size: 24px;
+	font-weight: bolder;
+	font-family: 'Times New Roman', Times, serif;
+	line-height: 1.0;
+}
+
+.titleAddress {
+	text-align: center;
+	font-size: 14px;
+	font-weight: 550;
+	font-family: Arial, Helvetica, sans-serif;
+	line-height: 1.0;
+	margin-top: -10px;
+	margin-bottom: 0px;
+}
+
+.termsConditions {
+	text-align: left;
+	font-size: 8px;
+	font-weight: 550;
+	font-family: Arial, Helvetica, sans-serif;
+	line-height: 0.7;
+}
+</style>
+</head>
+<body>
+	<p style="text-align: center; margin-bottom: 0px;">RECEIPT</p>
+	<table>
+		<tr class="header-row">
+			<td colspan="2">
+				<div class="gstin">GSTIN: 33DDKPP5663N1ZU</div>
+				<div class="cell">Cell: +91 8870688606</div>
+				<div>
+					<p class="header">CAR SQUARE</p>
+					<p class="titleAddress">
+						1/320, VEPPAMPALAYAM, VALLAIPURATHANPALAYAM,<br></br>KADIRAMPATTAI
+						(po), ERODE - 638 107<br></br> Tamil Nadu (State Code - 33)
+					</p>
+				</div>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<table class="collapse-table ">
+					<!-- <thead>
+						<tr>
+							<th>Nested Header 1</th>
+							<th>Nested Header 2</th>
+							<th>Nested Header 3</th>
+						</tr>
+					</thead> -->
+					<tbody>
+						<tr>
+							<td style="width: 33%;"><strong>To:</strong><span
+								th:text="${ownerName}"></span></td>
+							<td
+								style="width: 33%; display: flex; justify-content: space-between; align-items: center;">
+								<strong style="flex: 1; text-align: left;">Receipt No</strong> <span
+								style="flex: 0; text-align: center;">:</span> <span
+								style="flex: 1; text-align: right;" th:text="${receiptNo}"></span>
+							</td>
+
+						</tr>
+						<tr>
+							<td
+								style="width: 33%; display: flex; justify-content: space-between; align-items: center;">
+								<strong style="flex: 1; text-align: left;">Date</strong> <span
+								style="flex: 0; text-align: center;">:</span> <span
+								style="flex: 1; text-align: right;" th:text="${date}"></span>
+							</td>
+							<td
+								style="width: 33%; display: flex; justify-content: space-between; align-items: center;">
+								<strong style="flex: 1; text-align: left;">Payment Mode</strong>
+								<span style="flex: 0; text-align: center;">:</span> <span
+								style="flex: 1; text-align: right;" th:text="${mode}"></span>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</td>
+
+		</tr>
+		<tr>
+			<td colspan="2"
+				style="width: 100%; text-align: left; font-size: 24px; font-weight: bolder;">Rs
+				: <span th:text="${netAmount}"></span>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2"
+				style="width: 100%; text-align: left; font-size: 18px; font-weight: bolder;">Amount
+				in Words: <span th:text="${amountInWords}"></span>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2"
+				style="width: 100%; text-align: left; font-size: 18px; font-weight: bolder;">Towards
+				Invoice No : <span th:text="${invoiceIds}"></span>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<table class="collapse-table">
+					<tbody>
+						<tr>
+							<td style="width: 50%;">
+								<table class="collapse-table ">
+									<tbody>
+										<tr>
+											<td style="width: 25%;"><strong>Receiver Sign</strong></td>
+										</tr>
+									</tbody>
+								</table>
+							</td>
+							<td style="width: 50%;">
+								<table class="collapse-table ">
+									<tbody>
+										<tr>
+											<td style="width: 25%; text-align: right;"><strong>For
+													CAR SQUARE </strong></td>
+										</tr>
+										<tr>
+											<td style="width: 25%; text-align: right;"></td>
+										</tr>
+										<tr>
+											<td style="width: 25%; text-align: right;"></td>
+										</tr>
+										<tr>
+											<td style="width: 25%; text-align: right;"><strong>Authorised
+													Signature </strong></td>
+										</tr>
+									</tbody>
+								</table>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</td>
+		</tr>
+	</table>
+</body>
+</html>

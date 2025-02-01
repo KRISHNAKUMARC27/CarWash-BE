@@ -98,7 +98,7 @@ public class JobCardController {
 	public ResponseEntity<?> generateBillPdf(@PathVariable String id) {
 
 		try {
-			return jobCardService.generateInvoicePdf(id);
+			return jobCardService.invoicePdf(id);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return ResponseEntity.badRequest().body(e.getMessage());

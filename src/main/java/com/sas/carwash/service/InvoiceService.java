@@ -21,11 +21,7 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
-import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.InvoiceRepository;
-import com.sas.carwash.repository.JobCardRepository;
-import com.sas.carwash.repository.JobSparesRepository;
-import com.sas.carwash.utils.NumberToWordsConverter;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,10 +35,6 @@ public class InvoiceService {
 	private final JobCardService jobCardService;
     private final SpringTemplateEngine templateEngine;
     
-	private final JobCardRepository jobCardRepository;
-	private final JobSparesRepository jobSparesRepository;
-
-
 	public List<?> findAll() throws Exception {
 		//invoiceData();
 		return invoiceRepository.findAllByOrderByIdDesc();
