@@ -2,7 +2,7 @@ package com.sas.carwash.entity;
 
 import java.io.Serializable;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import org.springframework.data.annotation.Id;
 
@@ -22,12 +22,13 @@ public class Attendance implements Serializable {
 	@Id
 	private String id;
 	private String employeeId; // Reference to Employee
-	private String name;
+	private String employeeName;
 	private LocalDate date;
 	private Boolean present; // true = Present, false = Absent
-	private LocalDateTime checkInTime;
-	private LocalDateTime checkOutTime;
+	private LocalTime checkInTime;
+	private LocalTime checkOutTime;
 	private Integer workingHours;
 	private Boolean onLeave; // true if leave is taken
+	private String leaveType;
 
 }

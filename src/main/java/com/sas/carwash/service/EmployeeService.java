@@ -1,5 +1,9 @@
 package com.sas.carwash.service;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -8,8 +12,10 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import com.sas.carwash.entity.Attendance;
 import com.sas.carwash.entity.Department;
 import com.sas.carwash.entity.Employee;
+import com.sas.carwash.entity.Leave;
 import com.sas.carwash.repository.AttendanceRepository;
 import com.sas.carwash.repository.DepartmentRepository;
 import com.sas.carwash.repository.EmployeeRepository;
@@ -99,6 +105,33 @@ public class EmployeeService {
 			mongoTemplate.updateMulti(query, update, Employee.class);
 		}
 		return department;
+	}
+
+	public Attendance saveAttendance(Attendance attendance) throws Exception {
+		List<Attendance> attendanceList = attendanceRepository.findByDate(LocalDate.now());
+		boolean found = attendanceList.stream().anyMatch(s -> s.getEmployeeId().equals(attendance.getEmployeeId()));
+		if (found) {
+			throw new Exception("Attendance already marked for employee " + attendance.getEmployeeName());
+		}
+		attendance.setDate(LocalDate.now());
+		if (attendance.getOnLeave()) {
+			Leave leave = Leave.builder().date(LocalDate.now()).employeeId(attendance.getEmployeeId())
+					.employeeName(attendance.getEmployeeName()).leaveType(attendance.getLeaveType()).build();
+			leaveRepository.save(leave);
+			attendance.setPresent(false);
+		} else {
+			attendance.setCheckInTime(LocalTime.now());
+			attendance.setPresent(true);
+		}
+		return attendanceRepository.save(attendance);
+	}
+
+	private Integer calculateWorkingHours(LocalTime checkIn, LocalTime checkOut) {
+		if (checkIn != null && checkOut != null) {
+			long hours = Duration.between(checkIn, checkOut).toHours();
+			return (int) hours; // Convert to Integer
+		}
+		return 0; // Default if values are missing
 	}
 
 }

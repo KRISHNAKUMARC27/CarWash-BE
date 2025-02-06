@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.sas.carwash.entity.Attendance;
 import com.sas.carwash.entity.Department;
 import com.sas.carwash.entity.Employee;
 import com.sas.carwash.service.EmployeeService;
@@ -66,6 +67,16 @@ public class EmployeeController {
 	public ResponseEntity<?> updateDepartment(@PathVariable String oldDept, @PathVariable String newDept) {
 		try {
 			return ResponseEntity.ok().body(employeeService.updateDepartment(oldDept, newDept));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
+	
+	@PostMapping("/attendance")
+	public ResponseEntity<?> saveAttendance(@RequestBody Attendance attendance) {
+		try {
+			return ResponseEntity.ok().body(employeeService.saveAttendance(attendance));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return ResponseEntity.badRequest().body(e.getMessage());

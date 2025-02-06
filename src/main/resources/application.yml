@@ -6,3 +6,4 @@ spring:
     
 config:
   paymentModes: CASH, UPI, CREDIT, CARD(CREDIT), CARD(DEBIT), BANK TRANSFER
+  leaveType: SICK, CASUAL, EARNED, UNPAID
