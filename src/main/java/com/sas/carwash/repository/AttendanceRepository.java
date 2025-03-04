@@ -9,6 +9,12 @@ import com.sas.carwash.entity.Attendance;
 
 public interface AttendanceRepository extends MongoRepository<Attendance, String> {
 	
+	List<Attendance> findByDateAndCheckInTimeNotNull(LocalDate date);
+	List<Attendance> findByDateAndLeaveTypeNotNull(LocalDate date);
+	List<Attendance> findByDateAndCheckOutTimeNotNull(LocalDate date);
 	List<Attendance> findByDate(LocalDate date);
+	Attendance findByEmployeeIdAndDate(String employeeId, LocalDate date);
+	List<Attendance> findAllByOrderByIdDesc();
+
     
 }
