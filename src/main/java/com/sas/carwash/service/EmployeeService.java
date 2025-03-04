@@ -3,7 +3,12 @@ package com.sas.carwash.service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.WeekFields;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -167,6 +172,116 @@ public class EmployeeService {
 	public List<?> findAllAttendace() {
 
 		return attendanceRepository.findAllByOrderByIdDesc();
+	}
+
+	public Map<String, Object> getDailyAttendance(LocalDate date) {
+		List<Attendance> records = attendanceRepository.findByDate(date);
+
+		return processAttendance(records);
+	}
+
+	public Map<String, Object> getWeeklyAttendance(int year, int week) {
+		List<Attendance> records = attendanceRepository.findAll().stream().filter(
+				att -> att.getDate().getYear() == year && att.getDate().get(WeekFields.ISO.weekOfYear()) == week)
+				.collect(Collectors.toList());
+
+		return processAttendance(records);
+	}
+
+	public Map<String, Object> getMonthlyAttendance(int year, int month) {
+		List<Attendance> records = attendanceRepository.findAll().stream()
+				.filter(att -> att.getDate().getYear() == year && att.getDate().getMonthValue() == month)
+				.collect(Collectors.toList());
+
+		return processAttendance(records);
+	}
+
+	public Map<String, Object> getYearlyAttendance(int year) {
+		List<Attendance> records = attendanceRepository.findAll().stream()
+				.filter(att -> att.getDate().getYear() == year).collect(Collectors.toList());
+
+		return processAttendance(records);
+	}
+
+	private Map<String, Object> processAttendance(List<Attendance> records) {
+		Map<String, Object> result = new HashMap<>();
+
+		long presentCount = records.stream().filter(Attendance::getPresent).count();
+		long absentCount = records.size() - presentCount;
+
+		Map<String, Integer> workingHoursPerEmployee = records.stream()
+				.collect(Collectors.groupingBy(Attendance::getEmployeeName,
+						Collectors.summingInt(att -> Optional.ofNullable(att.getWorkingHours()).orElse(0))));
+
+		result.put("totalPresent", presentCount);
+		result.put("totalAbsent", absentCount);
+		result.put("workingHours", workingHoursPerEmployee);
+
+		return result;
+	}
+
+	public Map<String, Object> getAttendanceByDateRange(LocalDate startDate, LocalDate endDate) {
+		List<Attendance> records = attendanceRepository.findAll().stream()
+				.filter(att -> !att.getDate().isBefore(startDate) && !att.getDate().isAfter(endDate))
+				.collect(Collectors.toList());
+
+		return processAttendance(records);
+	}
+
+	public Map<String, Object> getDailyLeave(LocalDate date) {
+		List<Leave> records = leaveRepository.findByDate(date);
+
+		return processLeave(records);
+	}
+
+	public Map<String, Object> getWeeklyLeave(int year, int week) {
+		List<Leave> records = leaveRepository.findAll().stream().filter(
+				att -> att.getDate().getYear() == year && att.getDate().get(WeekFields.ISO.weekOfYear()) == week)
+				.collect(Collectors.toList());
+
+		return processLeave(records);
+	}
+
+	public Map<String, Object> getMonthlyLeave(int year, int month) {
+		List<Leave> records = leaveRepository.findAll().stream()
+				.filter(att -> att.getDate().getYear() == year && att.getDate().getMonthValue() == month)
+				.collect(Collectors.toList());
+
+		return processLeave(records);
+	}
+
+	public Map<String, Object> getYearlyLeave(int year) {
+		List<Leave> records = leaveRepository.findAll().stream().filter(att -> att.getDate().getYear() == year)
+				.collect(Collectors.toList());
+
+		return processLeave(records);
+	}
+
+	public Map<String, Object> getLeaveByDateRange(LocalDate startDate, LocalDate endDate) {
+		List<Leave> records = leaveRepository.findAll().stream()
+				.filter(att -> !att.getDate().isBefore(startDate) && !att.getDate().isAfter(endDate))
+				.collect(Collectors.toList());
+
+		return processLeave(records);
+	}
+
+	private Map<String, Object> processLeave(List<Leave> records) {
+		Map<String, Object> result = new HashMap<>();
+
+		long presentCount = records.size();
+
+		Map<String, Long> leaveCountPerEmployee = records.stream()
+				.collect(Collectors.groupingBy(Leave::getEmployeeName, Collectors.counting()));
+
+		result.put("totalAbsent", presentCount);
+		result.put("leaveCount", leaveCountPerEmployee);
+
+		return result;
+	}
+
+	public List<?> findAllLeave() {
+		// TODO Auto-generated method stub
+		return leaveRepository.findAllByOrderByIdDesc();
 	}
 
 }
