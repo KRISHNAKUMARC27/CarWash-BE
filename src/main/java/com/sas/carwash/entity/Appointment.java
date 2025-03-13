@@ -26,5 +26,6 @@ public class Appointment implements Serializable {
     private String service;
     private String description;
     private String staffName;
+    private String status;
 
 }
