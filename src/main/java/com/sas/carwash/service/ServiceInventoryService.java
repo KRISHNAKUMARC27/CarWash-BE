@@ -20,12 +20,12 @@ public class ServiceInventoryService {
 
 	private final ServiceInventoryRepository serviceInventoryRepository;
 	private final ServiceCategoryRepository serviceCategoryRepository;
-	//private final SparesEventsRepository sparesEventsRepository;
+	// private final SparesEventsRepository sparesEventsRepository;
 
 	public List<?> findAll() {
 		return serviceInventoryRepository.findAllByOrderByIdDesc();
 	}
-	
+
 	public ServiceInventory findById(String id) throws Exception {
 		return serviceInventoryRepository.findById(id).orElse(null);
 	}
@@ -38,11 +38,13 @@ public class ServiceInventoryService {
 			if (oldService != null && !oldService.getCategory().equals(service.getCategory())) {
 				oldServiceCategory = oldService.getCategory();
 			}
-		}
-		
-		ServiceInventory existingServiceInventory = serviceInventoryRepository.findByDescAndCategory(service.getDesc(), service.getCategory());
-		if(existingServiceInventory != null) {
-			throw new Exception("Service Name " + service.getDesc() + " already exists for the category");
+		} else {
+
+			ServiceInventory existingServiceInventory = serviceInventoryRepository
+					.findByDescAndCategory(service.getDesc(), service.getCategory());
+			if (existingServiceInventory != null) {
+				throw new Exception("Service Name " + service.getDesc() + " already exists for the category");
+			}
 		}
 		service = serviceInventoryRepository.save(service);
 
@@ -85,8 +87,8 @@ public class ServiceInventoryService {
 		if (serviceCategory != null) {
 			// sparesInventoryRepository.updateCategory(sparesCategory.getCategory(), "");
 			if (serviceCategory.getCount() != null && serviceCategory.getCount() > 0)
-				throw new Exception("Cannot delete category as its has " + serviceCategory.getCount()
-						+ " Services reffering to ");
+				throw new Exception(
+						"Cannot delete category as its has " + serviceCategory.getCount() + " Services reffering to ");
 		} else {
 			throw new Exception("Invalid id for deleteServiceCategoryById " + id);
 		}
