@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sas.carwash.entity.Department;
 import com.sas.carwash.entity.Employee;
+import com.sas.carwash.entity.EmployeeSalary;
 import com.sas.carwash.model.AttendanceRecord;
 import com.sas.carwash.service.EmployeeService;
 
@@ -145,4 +146,25 @@ public class EmployeeController {
 	public Map<String, Object> getLeaveByDateRange(@RequestParam String startDate, @RequestParam String endDate) {
 		return employeeService.getLeaveByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
 	}
+
+	@PostMapping("/settleEmployeeSalary")
+	public ResponseEntity<?> settleEmployeeSalary(@RequestBody EmployeeSalary empSalary) {
+		try {
+			return ResponseEntity.ok().body(employeeService.settleEmployeeSalary(empSalary));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
+
+	@GetMapping("/setupEmployeeSalary/{id}/{salaryDate}")
+	public ResponseEntity<?> setupEmployeeSalary(@PathVariable String id, @PathVariable String salaryDate) {
+		try {
+			return ResponseEntity.ok().body(employeeService.setupEmployeeSalary(id, LocalDate.parse(salaryDate)));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
+
 }
