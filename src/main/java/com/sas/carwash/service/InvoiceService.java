@@ -7,8 +7,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
+import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.InvoiceRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -193,33 +196,5 @@ public class InvoiceService {
             renderer.createPDF(os);
         }
     }
-	
-//	public void invoiceData() throws Exception {
-//		Map<String, Object> data = new HashMap<>();
-//		data.put("vehNo", "TN56C7799");
-//		data.put("ownerName", "M/s VPR MAHAL, METTUKADAI, ERODE");
-//		data.put("kms", "VPR MAHAL, METTUKADAI, ERODE");
-//		data.put("invoiceNo", "387");
-//		data.put("date", "08-01-2025");
-//		data.put("mode", "Credit");
-//		data.put("nextFreeCheckKms", "");
-//		data.put("vehicleModel", "");
-//		data.put("nextServiceKms", "");
-//		
-//		data.put("products", List.of(
-//		    Map.of("name", "Gyproc Board - Saint Gobain", "hsnCode", "68091100", "qty", 110, "rate", 360.17, "gst", "18%", "amount", 39618.65),
-//		    Map.of("name", "Xpert Ceiling Angle", "hsnCode", "72169910", "qty", 60, "rate", 58.47, "gst", "18%", "amount", 3508.48)
-//		));
-//		data.put("taxDetails", List.of(
-//		    Map.of("taxableValue", "47345.52", "cgstPercent", "9.0", "cgstAmt", "4261.88", "sgstPercent", "9.0", "sgstAmt", "4261.88", "netPercent", "18", "amount", "8523.77")
-//		));
-//		data.put("totalTaxAmt", "8588.53");
-//		data.put("roundOff", "450.00");
-//		data.put("netAmount", "57688.00");
-//		data.put("amountInWords", "Fifty Seven Thousand Six Hundred Eighty Eight Only");
-//		
-//		generateInvoicePdf(data,"invoice.pdf");
-//	}
-	
 
 }

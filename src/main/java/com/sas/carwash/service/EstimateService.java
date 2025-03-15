@@ -7,8 +7,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
+import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -33,10 +36,10 @@ public class EstimateService {
 
 	private final EstimateRepository estimateRepository;
 	private final JobCardService jobCardService;
-    private final SpringTemplateEngine templateEngine;
-    
+	private final SpringTemplateEngine templateEngine;
+
 	public List<?> findAll() throws Exception {
-		//estimateData();
+		// estimateData();
 		return estimateRepository.findAllByOrderByIdDesc();
 	}
 
@@ -87,8 +90,9 @@ public class EstimateService {
 			Estimate estimate = findById(id);
 			estimateList.add(estimate);
 		}
-		
-		//Sort in ascending order of pending amount because lets try to close small fries earlier.
+
+		// Sort in ascending order of pending amount because lets try to close small
+		// fries earlier.
 		estimateList.sort(Comparator.comparing(Estimate::getPendingAmount));
 
 		List<Estimate> deepCopiedEstimateList = estimateList.stream().map(Estimate::new).collect(Collectors.toList());
@@ -145,16 +149,20 @@ public class EstimateService {
 			}
 		} catch (Exception ex) {
 			estimateRepository.saveAll(deepCopiedEstimateList);
-			//deepCopiedEstimateList.stream().forEach(estimate -> estimateRepository.save(estimate));
+			// deepCopiedEstimateList.stream().forEach(estimate ->
+			// estimateRepository.save(estimate));
 			throw new Exception("Rolled back changes. Error: " + ex.getMessage());
 		}
 		return response;
 	}
 
-	// This method is used to create a map of Estimates with value as the creditPayment amount.
-	// User could have paid less amount so use it on the lists 1 by 1. 
-	// If the settleamount is less than or equal to first estimate then break there itself.
-	// else keep subtracting the settleamount and update in the object itself. also fill the map.
+	// This method is used to create a map of Estimates with value as the
+	// creditPayment amount.
+	// User could have paid less amount so use it on the lists 1 by 1.
+	// If the settleamount is less than or equal to first estimate then break there
+	// itself.
+	// else keep subtracting the settleamount and update in the object itself. also
+	// fill the map.
 	private Map<Estimate, BigDecimal> calculateNecessaryCreditSettlementPerEstimate(List<Estimate> estimateList,
 			MultiCreditPayment multiCreditPayment) {
 
@@ -177,21 +185,20 @@ public class EstimateService {
 		return settleMap;
 
 	}
-	
-	
-	public void generateEstimatePdf(Map<String, Object> data, String outputPath) throws Exception {
-        // Render HTML with dynamic data
-        Context context = new Context();
-        context.setVariables(data);
-        String htmlContent = templateEngine.process("estimate", context);
 
-        // Convert HTML to PDF
-        try (OutputStream os = new FileOutputStream(outputPath)) {
-            ITextRenderer renderer = new ITextRenderer();
-            renderer.setDocumentFromString(htmlContent);
-            renderer.layout();
-            renderer.createPDF(os);
-        }
-    }
-	
+	public void generateEstimatePdf(Map<String, Object> data, String outputPath) throws Exception {
+		// Render HTML with dynamic data
+		Context context = new Context();
+		context.setVariables(data);
+		String htmlContent = templateEngine.process("estimate", context);
+
+		// Convert HTML to PDF
+		try (OutputStream os = new FileOutputStream(outputPath)) {
+			ITextRenderer renderer = new ITextRenderer();
+			renderer.setDocumentFromString(htmlContent);
+			renderer.layout();
+			renderer.createPDF(os);
+		}
+	}
+
 }
