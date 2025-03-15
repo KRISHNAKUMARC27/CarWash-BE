@@ -21,6 +21,7 @@ public class Expense implements Serializable {
 
 	@Id
 	private String id;
+	private String empId;  // for salary and advance
 	private String type;
 	private String desc;
 	private String paymentMode;

@@ -406,15 +406,25 @@ public class EmployeeService {
 	    empSalary.setSalaryDate(LocalDateTime.now());
 	    empSalary = employeeSalaryRepository.save(empSalary);
 
-	    Expense expense = Expense.builder()
-	            .type("SALARY")
-	            .expenseAmount(empSalary.getSalaryPaid())
-	            .desc(empSalary.getName() + " - SALARY")
-	            .paymentMode(empSalary.getPaymentMode())
-	            .build();
-
-	    expenseService.saveExpense(expense);
+	    //Record it as expense
+	    expenseService.saveSalaryExpense(empSalary);
+	    
+	    //calculate new salary advance and update it.
+	    Employee employee = employeeRepository.findById(empSalary.getEmpId())
+				.orElseThrow(() -> new RuntimeException("Employee not found"));
+	    BigDecimal newSalaryAdvance = calculateNewSalaryAdvance(empSalary.getSalaryEarned(), empSalary.getSalaryPaid(), empSalary.getSalaryAdvance());
+	    employee.setSalaryAdvance(newSalaryAdvance);
+	    employeeRepository.save(employee);
+	    
 	    return empSalary;
+	}
+
+	public BigDecimal calculateNewSalaryAdvance(BigDecimal salaryEarned, BigDecimal salaryPaid, BigDecimal oldAdvance) {
+	    if (salaryEarned == null) salaryEarned = BigDecimal.ZERO;
+	    if (salaryPaid == null) salaryPaid = BigDecimal.ZERO;
+	    if (oldAdvance == null) oldAdvance = BigDecimal.ZERO;
+
+	    return oldAdvance.subtract(salaryEarned.subtract(salaryPaid));
 	}
 
 
