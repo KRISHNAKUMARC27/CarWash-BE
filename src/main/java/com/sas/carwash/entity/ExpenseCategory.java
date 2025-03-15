@@ -1,8 +1,6 @@
 package com.sas.carwash.entity;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.Id;
 
@@ -15,18 +13,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Expense implements Serializable {
+public class ExpenseCategory implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
 	@Id
 	private String id;
-	private String empId;  // for salary and advance
-	private String type;
-	private String desc;
-	private String paymentMode;
-	private BigDecimal expenseAmount;
-	private LocalDateTime date;
-	private String comment;
-	
+
+	private String category;
 }
