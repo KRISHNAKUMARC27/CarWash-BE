@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 public class MultiCreditPayment {
 	
 	private List<String> invoiceIds;
+	private List<String> estimateIds;
 	private BigDecimal amount;
 	private LocalDateTime creditDate;
 	private String paymentMode;

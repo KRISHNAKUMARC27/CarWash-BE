@@ -12,8 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import com.sas.carwash.entity.ReceiptInvoice;
-import com.sas.carwash.repository.ReceiptInvoiceRepository;
+import com.sas.carwash.entity.ReceiptEstimate;
+import com.sas.carwash.repository.ReceiptEstimateRepository;
 import com.sas.carwash.utils.NumberToWordsConverter;
 import com.sas.carwash.utils.PdfUtils;
 
@@ -23,9 +23,9 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ReceiptInvoiceService {
+public class ReceiptEstimateService {
 
-	private final ReceiptInvoiceRepository receiptRepository;
+	private final ReceiptEstimateRepository receiptRepository;
 	private final JobCardService jobCardService;
 	private final PdfUtils pdfUtils;
 
@@ -33,14 +33,14 @@ public class ReceiptInvoiceService {
 		return receiptRepository.findAllByOrderByIdDesc();
 	}
 
-	public ReceiptInvoice findById(String id) throws Exception {
+	public ReceiptEstimate findById(String id) throws Exception {
 		return receiptRepository.findById(id).orElseThrow(() -> new RuntimeException("Receipt ID not found"));
 	}
 
-	public ReceiptInvoice save(ReceiptInvoice receipt) throws Exception {
+	public ReceiptEstimate save(ReceiptEstimate receipt) throws Exception {
 
 		if (receipt.getId() == null) {
-			receipt.setReceiptId(jobCardService.getNextSequenceForNewSequence("receiptId"));
+			receipt.setReceiptId(jobCardService.getNextSequenceForNewSequence("estimateReceiptId"));
 			receipt.setReceiptDate(LocalDateTime.now());
 		}
 
@@ -48,10 +48,10 @@ public class ReceiptInvoiceService {
 	}
 
 	public ResponseEntity<ByteArrayResource> receiptPdf(String id) throws Exception {
-		ReceiptInvoice receipt = findById(id);
+		ReceiptEstimate receipt = findById(id);
 		String paymentMode = receipt.getPaymentMode();
 
-		String invoiceIdsString = receipt.getInvoiceIdList().stream().map(String::valueOf)
+		String estimateIdsString = receipt.getEstimateIdList().stream().map(String::valueOf)
 				.collect(Collectors.joining(", "));
 
 		Map<String, Object> data = new HashMap<>();
@@ -59,12 +59,12 @@ public class ReceiptInvoiceService {
 		data.put("receiptNo", receipt.getReceiptId());
 		data.put("date", receipt.getReceiptDate());
 		data.put("mode", paymentMode);
-		data.put("invoiceIds", invoiceIdsString);
+		data.put("estimateIds", estimateIdsString);
 
 		data.put("netAmount", receipt.getAmount());
 		data.put("amountInWords", NumberToWordsConverter.convert(receipt.getAmount()));
 
-		ByteArrayResource resource = pdfUtils.generateHTMLPdf(data,"receipt");
+		ByteArrayResource resource = pdfUtils.generateHTMLPdf(data,"receiptEstimate");
 
 		String filename = "Bill_" + receipt.getReceiptId() + ".pdf";
 

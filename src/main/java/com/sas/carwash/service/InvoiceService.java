@@ -53,6 +53,9 @@ public class InvoiceService {
 		if (jobCard == null) {
 			throw new Exception("JobCard cannot be null");
 		}
+		if (jobCard.getEstimateObjId() != null) {
+			throw new Exception("Bill already generated");
+		}
 		JobSpares jobSpares = jobCardService.findByIdJobSpares(invoice.getJobObjId());
 		if (jobSpares == null) {
 			throw new Exception("JobSpares cannot be null");
