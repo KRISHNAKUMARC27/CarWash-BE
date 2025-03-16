@@ -29,16 +29,11 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
-    private final PasswordEncoder encoder;
+
 
     public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder encoder) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.encoder = encoder;
     }
 
     @PostMapping("/login")
@@ -57,22 +52,6 @@ public class AuthController {
                 .toList();
         return AuthResponse.builder().token(jwtToken).username(username).roles(roles).build();
     }
-    
-    @PostMapping("/signup")
-    public User signup(@RequestBody User user) {
-    	user.setPassword(encoder.encode(user.getPassword()));
-    	return userRepository.save(user);
-    }
-    
-    @PostMapping("/createRole")
-    public Role createRole(@RequestBody Role role) {
-    	return roleRepository.save(role);
-    }
-    
-    @GetMapping("/role/{name}")
-    public Role getRole(@PathVariable String name) {
-    	return roleRepository.findByName(name);
-    }
-    
+        
 }
 
