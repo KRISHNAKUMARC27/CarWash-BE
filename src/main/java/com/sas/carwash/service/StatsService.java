@@ -912,15 +912,11 @@ public class StatsService {
 		List<Map<String, BigDecimal>> jobSparesSeries = getYearlyEarningSplitSeries(currentSpares, year);
 
 		List<BigDecimal> sparesSeries = new ArrayList<>();
-		List<BigDecimal> laborSeries = new ArrayList<>();
-		List<BigDecimal> consumablesSeries = new ArrayList<>();
-		List<BigDecimal> externalWorkSeries = new ArrayList<>();
+		List<BigDecimal> serviceSeries = new ArrayList<>();
 
 		for (Map<String, BigDecimal> map : jobSparesSeries) {
 			sparesSeries.add(map.get("SPARES"));
-			laborSeries.add(map.get("LABOR"));
-			consumablesSeries.add(map.get("CONSUMABLES"));
-			externalWorkSeries.add(map.get("EXTERNALWORK"));
+			serviceSeries.add(map.get("SERVICE"));
 		}
 
 		BigDecimal totalGrandTotal = currentSpares.stream().map(JobSpares::getGrandTotal) // Extract the grandTotal
@@ -935,8 +931,7 @@ public class StatsService {
 		Map<String, Object> chartData = getBarChartData();
 
 		List<Map<String, Object>> series = Arrays.asList(createSeriesEarning("SPARES", sparesSeries),
-				createSeriesEarning("LABOR", laborSeries), createSeriesEarning("CONSUMABLES", consumablesSeries),
-				createSeriesEarning("EXTERNALWORK", externalWorkSeries));
+				createSeriesEarning("SERVICE", serviceSeries));
 
 		chartData.put("series", series);
 
@@ -1021,7 +1016,9 @@ public class StatsService {
 //						.invoiceId(jobCard.getInvoiceId())
 						.jobStatus(jobCard.getJobStatus()).jobCloseDate(jobCard.getJobCloseDate())
 						.vehicleRegNo(jobCard.getVehicleRegNo()).totalSparesValue(jobSpares.getTotalSparesValue())
-						.totalConsumablesValue(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO)
+						.totalConsumablesValue(
+								jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue()
+										: BigDecimal.ZERO)
 //						.totalExternalWorkValue(jobSpares.getTotalExternalWorkValue() != null ? jobSpares.getTotalExternalWorkValue() : BigDecimal.ZERO)
 //						.totalLabourValue(jobSpares.getTotalLabourValue() != null ? jobSpares.getTotalLabourValue() : BigDecimal.ZERO)
 						.grandTotal(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO)
@@ -1034,7 +1031,7 @@ public class StatsService {
 			}
 			jobCardReportList.add(jobCardReport);
 		}
-		
+
 		return jobCardReportList;
 	}
 

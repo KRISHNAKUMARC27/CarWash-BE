@@ -3,11 +3,12 @@ package com.sas.carwash.service;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,7 +24,6 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
-import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.InvoiceRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -196,5 +196,67 @@ public class InvoiceService {
             renderer.createPDF(os);
         }
     }
+	
+	// REPORT START
+	private Map<String, Object> processInvoice(List<Invoice> records) {
+		Map<String, Object> result = new HashMap<>();
+
+		// grandTotal amount
+		BigDecimal total = records.stream()
+				.map(exp -> Optional.ofNullable(exp.getGrandTotal()).orElse(BigDecimal.ZERO))
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		result.put("total", total);
+
+		// Group by credit or not
+		Map<Boolean, Long> byType = records.stream()
+				.collect(Collectors.groupingBy(exp -> Optional.ofNullable(exp.getCreditFlag()).orElse(false),
+						Collectors.counting()));
+		result.put("byCredit", byType);
+
+		// pending amount
+		BigDecimal pending = records.stream()
+				.map(exp -> Optional.ofNullable(exp.getPendingAmount()).orElse(BigDecimal.ZERO))
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		result.put("pending", pending);
+
+		return result;
+	}
+
+	public Map<String, Object> getDailyInvoice(LocalDate date) {
+		LocalDateTime start = date.atStartOfDay();
+		LocalDateTime end = start.plusDays(1);
+		List<Invoice> records = invoiceRepository.findByBillCloseDateBetween(start, end);
+		return processInvoice(records);
+	}
+
+	public Map<String, Object> getWeeklyInvoice(int year, int week) {
+		List<Invoice> records = invoiceRepository.findAll().stream().filter(e -> {
+			LocalDateTime dateTime = e.getBillCloseDate();
+			return dateTime.getYear() == year && dateTime.get(WeekFields.ISO.weekOfYear()) == week;
+		}).collect(Collectors.toList());
+		return processInvoice(records);
+	}
+
+	public Map<String, Object> getMonthlyInvoice(int year, int month) {
+		List<Invoice> records = invoiceRepository.findAll().stream()
+				.filter(e -> e.getBillCloseDate().getYear() == year && e.getBillCloseDate().getMonthValue() == month)
+				.collect(Collectors.toList());
+		return processInvoice(records);
+	}
+
+	public Map<String, Object> getYearlyInvoice(int year) {
+		List<Invoice> records = invoiceRepository.findAll().stream().filter(e -> e.getBillCloseDate().getYear() == year)
+				.collect(Collectors.toList());
+		return processInvoice(records);
+	}
+
+	public Map<String, Object> getInvoiceByDateRange(LocalDate start, LocalDate end) {
+		LocalDateTime startDateTime = start.atStartOfDay();
+		LocalDateTime endDateTime = end.plusDays(1).atStartOfDay();
+		List<Invoice> records = invoiceRepository.findByBillCloseDateBetween(startDateTime, endDateTime);
+		return processInvoice(records);
+	}
+
+	// REPORT END
 
 }

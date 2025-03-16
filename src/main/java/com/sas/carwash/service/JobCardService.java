@@ -27,11 +27,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.itextpdf.layout.element.Cell;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.element.Text;
-import com.itextpdf.layout.properties.TextAlignment;
 import com.sas.carwash.email.EmailService;
 import com.sas.carwash.entity.Estimate;
 import com.sas.carwash.entity.Invoice;
@@ -483,19 +478,10 @@ public class JobCardService {
 		JobCard origJobCard = jobCardRepository.findById(jobCard.getId()).orElse(null);
 		if (origJobCard != null && !origJobCard.getJobStatus().equals("CLOSED")) {
 			if (jobCard.getJobStatus().equals("CLOSED")) {
-//				List<JobCardInfo> jobInfoList = origJobCard.getJobInfo();
-//				for (JobCardInfo jobInfo : jobInfoList) {
-//					if (!jobInfo.getCompleted().equals("Completed")) { // "Completed" string in UI also.
-//						throw new Exception(jobInfo.getComplaints() + " is not yet completed for the JobId "
-//								+ origJobCard.getJobId());
-//					}
-//				}
 				LocalDateTime jobCloseDate = LocalDateTime.now();
 				if (origJobCard.getJobCloseDate() == null)
 					origJobCard.setJobCloseDate(jobCloseDate);
 
-//				if (origJobCard.getEstimateId() == null)
-//					origJobCard.setEstimateId(getNextSequence("estimateId")); //TODO
 				JobSpares origJobSpares = jobSparesRepository.findById(jobCard.getId()).orElse(null);
 				if (origJobSpares != null) {
 					if (origJobSpares.getJobCloseDate() == null)
@@ -899,44 +885,44 @@ public class JobCardService {
 				.contentType(MediaType.APPLICATION_PDF).body(resource);
 	}
 
-	private Paragraph createCellWithFixedSpace(String... texts) {
-		// TODO Auto-generated method stub
-		String regex = "Job Card No: |Owner: |Address: |Contact No: |Driver: |Vehicle Reg. No: |Vehicle Model: |Technician Name: |Type of Vehicle: |K.M: |Vehicle Out Date: |Date: |Email: ";
-		Paragraph paragraph = new Paragraph();
-		for (String text : texts) {
-			if (text.equals("\n")) {
-				paragraph.add(text);
-			} else if (text.matches(regex)) {
-				paragraph.add(new Text(text).setBold());
-			} else {
-				paragraph.add(new Text(text).setTextAlignment(TextAlignment.RIGHT));
-			}
-
-		}
-		return paragraph;
-
-	}
-
-	private void setMinWidth(Table table, int rowIndex, int columnIndex, float minWidth) {
-		if (rowIndex < table.getNumberOfRows() && columnIndex < table.getNumberOfColumns()) {
-			table.getCell(rowIndex, columnIndex).setMinWidth(minWidth);
-		}
-	}
-
-	private void updateVechicleItems(Table table1, String items) {
-		if (items != null) {
-			if (items.equals("OK")) {
-				table1.addCell("OK");
-				table1.addCell("");
-			} else {
-				table1.addCell("");
-				table1.addCell("NOT OK");
-			}
-		} else {
-			table1.addCell("");
-			table1.addCell("");
-		}
-	}
+//	private Paragraph createCellWithFixedSpace(String... texts) {
+//		// TODO Auto-generated method stub
+//		String regex = "Job Card No: |Owner: |Address: |Contact No: |Driver: |Vehicle Reg. No: |Vehicle Model: |Technician Name: |Type of Vehicle: |K.M: |Vehicle Out Date: |Date: |Email: ";
+//		Paragraph paragraph = new Paragraph();
+//		for (String text : texts) {
+//			if (text.equals("\n")) {
+//				paragraph.add(text);
+//			} else if (text.matches(regex)) {
+//				paragraph.add(new Text(text).setBold());
+//			} else {
+//				paragraph.add(new Text(text).setTextAlignment(TextAlignment.RIGHT));
+//			}
+//
+//		}
+//		return paragraph;
+//
+//	}
+//
+//	private void setMinWidth(Table table, int rowIndex, int columnIndex, float minWidth) {
+//		if (rowIndex < table.getNumberOfRows() && columnIndex < table.getNumberOfColumns()) {
+//			table.getCell(rowIndex, columnIndex).setMinWidth(minWidth);
+//		}
+//	}
+//
+//	private void updateVechicleItems(Table table1, String items) {
+//		if (items != null) {
+//			if (items.equals("OK")) {
+//				table1.addCell("OK");
+//				table1.addCell("");
+//			} else {
+//				table1.addCell("");
+//				table1.addCell("NOT OK");
+//			}
+//		} else {
+//			table1.addCell("");
+//			table1.addCell("");
+//		}
+//	}
 
 	private String stringNullCheck(Object str) {
 		if (str == null)
@@ -1161,19 +1147,19 @@ public class JobCardService {
 //				.contentType(MediaType.APPLICATION_PDF).body(resource);
 //	}
 
-	void addEmptyRow(Table table) {
-
-		table.addCell(new Cell().setMinHeight(rowHeight)
-				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.CENTER)));
-		table.addCell(new Cell().setMinHeight(rowHeight)
-				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
-		table.addCell(new Cell().setMinHeight(rowHeight)
-				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
-		table.addCell(new Cell().setMinHeight(rowHeight)
-				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
-		table.addCell(new Cell().setMinHeight(rowHeight)
-				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
-	}
+//	void addEmptyRow(Table table) {
+//
+//		table.addCell(new Cell().setMinHeight(rowHeight)
+//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.CENTER)));
+//		table.addCell(new Cell().setMinHeight(rowHeight)
+//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
+//		table.addCell(new Cell().setMinHeight(rowHeight)
+//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
+//		table.addCell(new Cell().setMinHeight(rowHeight)
+//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
+//		table.addCell(new Cell().setMinHeight(rowHeight)
+//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
+//	}
 
 	public JobVehiclePhotos saveZipToMongo(MultipartFile zipFile, String id) throws IOException {
 

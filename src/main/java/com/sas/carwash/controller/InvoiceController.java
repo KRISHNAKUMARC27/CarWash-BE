@@ -1,5 +1,6 @@
 package com.sas.carwash.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -9,9 +10,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.sas.carwash.entity.Estimate;
 import com.sas.carwash.entity.Invoice;
 import com.sas.carwash.entity.ReceiptInvoice;
 import com.sas.carwash.model.MultiCreditPayment;
@@ -90,6 +91,31 @@ public class InvoiceController {
 			e.printStackTrace();
 			return ResponseEntity.badRequest().body(e.getMessage());
 		}
+	}
+	
+	//REPORTING
+	@GetMapping("/report/daily/{date}")
+	public Map<String, Object> getDailyInvoice(@PathVariable String date) {
+		return invoiceService.getDailyInvoice(LocalDate.parse(date));
+	}
 
+	@GetMapping("/report/weekly/{year}/{week}")
+	public Map<String, Object> getWeeklyInvoice(@PathVariable int year, @PathVariable int week) {
+		return invoiceService.getWeeklyInvoice(year, week);
+	}
+
+	@GetMapping("/report/monthly/{year}/{month}")
+	public Map<String, Object> getMonthlyInvoice(@PathVariable int year, @PathVariable int month) {
+		return invoiceService.getMonthlyInvoice(year, month);
+	}
+
+	@GetMapping("/report/yearly/{year}")
+	public Map<String, Object> getYearlyInvoice(@PathVariable int year) {
+		return invoiceService.getYearlyInvoice(year);
+	}
+
+	@GetMapping("/report/daterange")
+	public Map<String, Object> getInvoiceByDateRange(@RequestParam String startDate, @RequestParam String endDate) {
+		return invoiceService.getInvoiceByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
 	}
 }

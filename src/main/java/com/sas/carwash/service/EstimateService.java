@@ -3,11 +3,12 @@ package com.sas.carwash.service;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,7 +24,6 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
-import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -200,5 +200,66 @@ public class EstimateService {
 			renderer.createPDF(os);
 		}
 	}
+	
+	// REPORT START
+	private Map<String, Object> processEstimate(List<Estimate> records) {
+		Map<String, Object> result = new HashMap<>();
 
+		// grandTotal amount
+		BigDecimal total = records.stream()
+				.map(exp -> Optional.ofNullable(exp.getGrandTotal()).orElse(BigDecimal.ZERO))
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		result.put("total", total);
+
+		// Group by credit or not
+		Map<Boolean, Long> byType = records.stream()
+				.collect(Collectors.groupingBy(exp -> Optional.ofNullable(exp.getCreditFlag()).orElse(false),
+						Collectors.counting()));
+		result.put("byCredit", byType);
+
+		// pending amount
+		BigDecimal pending = records.stream()
+				.map(exp -> Optional.ofNullable(exp.getPendingAmount()).orElse(BigDecimal.ZERO))
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		result.put("pending", pending);
+
+		return result;
+	}
+
+	public Map<String, Object> getDailyEstimate(LocalDate date) {
+		LocalDateTime start = date.atStartOfDay();
+		LocalDateTime end = start.plusDays(1);
+		List<Estimate> records = estimateRepository.findByBillCloseDateBetween(start, end);
+		return processEstimate(records);
+	}
+
+	public Map<String, Object> getWeeklyEstimate(int year, int week) {
+		List<Estimate> records = estimateRepository.findAll().stream().filter(e -> {
+			LocalDateTime dateTime = e.getBillCloseDate();
+			return dateTime.getYear() == year && dateTime.get(WeekFields.ISO.weekOfYear()) == week;
+		}).collect(Collectors.toList());
+		return processEstimate(records);
+	}
+
+	public Map<String, Object> getMonthlyEstimate(int year, int month) {
+		List<Estimate> records = estimateRepository.findAll().stream()
+				.filter(e -> e.getBillCloseDate().getYear() == year && e.getBillCloseDate().getMonthValue() == month)
+				.collect(Collectors.toList());
+		return processEstimate(records);
+	}
+
+	public Map<String, Object> getYearlyEstimate(int year) {
+		List<Estimate> records = estimateRepository.findAll().stream().filter(e -> e.getBillCloseDate().getYear() == year)
+				.collect(Collectors.toList());
+		return processEstimate(records);
+	}
+
+	public Map<String, Object> getEstimateByDateRange(LocalDate start, LocalDate end) {
+		LocalDateTime startDateTime = start.atStartOfDay();
+		LocalDateTime endDateTime = end.plusDays(1).atStartOfDay();
+		List<Estimate> records = estimateRepository.findByBillCloseDateBetween(startDateTime, endDateTime);
+		return processEstimate(records);
+	}
+
+	// REPORT END
 }
