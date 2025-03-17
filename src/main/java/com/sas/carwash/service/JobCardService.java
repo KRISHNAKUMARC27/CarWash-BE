@@ -403,13 +403,13 @@ public class JobCardService {
 
 		jobSpares = calculateGSTAndUpdateFields(jobSpares);
 		jobSpares = jobSparesRepository.save(jobSpares);
-		
-		//CHECK IF INVOICE ID OR ESTIMATE ID IS SET. If yes, then re-estimate them.
-		if(jobSpares.getEstimateObjId() != null)
+
+		// CHECK IF INVOICE ID OR ESTIMATE ID IS SET. If yes, then re-estimate them.
+		if (jobSpares.getEstimateObjId() != null)
 			recalculateAndUpdateEstimate(jobSpares);
-		else if(jobSpares.getInvoiceObjId() != null)
+		else if (jobSpares.getInvoiceObjId() != null)
 			recalculateAndUpdateInvoice(jobSpares);
-		
+
 		return jobSpares;
 	}
 
@@ -557,7 +557,7 @@ public class JobCardService {
 		if (origJobSpares.getGrandTotal() != null && !grandTotal.equals(origJobSpares.getGrandTotal())) {
 			throw new Exception("Total amount calculation is wrong in UI");
 		}
-		
+
 		BigDecimal totalGstSparesValue = origJobSpares.getJobSparesInfo() != null
 				? origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
 						.reduce(BigDecimal.ZERO, BigDecimal::add)
@@ -1425,9 +1425,10 @@ public class JobCardService {
 		}
 
 	}
-	
+
 	public void recalculateAndUpdateEstimate(JobSpares jobSpares) throws Exception {
-		Estimate estimate = estimateRepository.findById(jobSpares.getEstimateObjId()).orElseThrow(() -> new RuntimeException("Estimate ID not found"));
+		Estimate estimate = estimateRepository.findById(jobSpares.getEstimateObjId())
+				.orElseThrow(() -> new RuntimeException("Estimate ID not found"));
 
 		BigDecimal newGrandTotal = Optional.ofNullable(jobSpares.getGrandTotal()).orElse(BigDecimal.ZERO);
 		BigDecimal oldGrandTotal = Optional.ofNullable(estimate.getGrandTotal()).orElse(BigDecimal.ZERO);
@@ -1462,6 +1463,15 @@ public class JobCardService {
 			// Mark as credit
 			estimate.setCreditFlag(true);
 			estimate.setCreditSettledFlag(false);
+
+			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").build();
+			List<PaymentSplit> splitList = estimate.getPaymentSplitList();
+			if (splitList != null && !splitList.isEmpty()) {
+				splitList.add(split);
+			} else {
+				splitList = new ArrayList<>();
+				splitList.add(split);
+			}
 
 		} else {
 			// Overpayment: try to reduce credit payments first
@@ -1530,9 +1540,10 @@ public class JobCardService {
 		// Save back the updated estimate (pseudo code - use repo)
 		estimateRepository.save(estimate);
 	}
-	
+
 	public void recalculateAndUpdateInvoice(JobSpares jobSpares) throws Exception {
-		Invoice invoice = invoiceRepository.findById(jobSpares.getInvoiceObjId()).orElseThrow(() -> new RuntimeException("Invoice ID not found"));
+		Invoice invoice = invoiceRepository.findById(jobSpares.getInvoiceObjId())
+				.orElseThrow(() -> new RuntimeException("Invoice ID not found"));
 
 		BigDecimal newGrandTotal = Optional.ofNullable(jobSpares.getGrandTotal()).orElse(BigDecimal.ZERO);
 		BigDecimal oldGrandTotal = Optional.ofNullable(invoice.getGrandTotal()).orElse(BigDecimal.ZERO);
@@ -1567,6 +1578,14 @@ public class JobCardService {
 			// Mark as credit
 			invoice.setCreditFlag(true);
 			invoice.setCreditSettledFlag(false);
+			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").build();
+			List<PaymentSplit> splitList = invoice.getPaymentSplitList();
+			if (splitList != null && !splitList.isEmpty()) {
+				splitList.add(split);
+			} else {
+				splitList = new ArrayList<>();
+				splitList.add(split);
+			}
 
 		} else {
 			// Overpayment: try to reduce credit payments first
@@ -1635,8 +1654,5 @@ public class JobCardService {
 		// Save back the updated invoice (pseudo code - use repo)
 		invoiceRepository.save(invoice);
 	}
-
-	
-
 
 }
