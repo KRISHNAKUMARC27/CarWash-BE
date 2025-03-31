@@ -1,6 +1,7 @@
 package com.sas.carwash.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -23,7 +24,6 @@ import com.sas.carwash.entity.Attendance;
 import com.sas.carwash.entity.Department;
 import com.sas.carwash.entity.Employee;
 import com.sas.carwash.entity.EmployeeSalary;
-import com.sas.carwash.entity.Expense;
 import com.sas.carwash.entity.Leave;
 import com.sas.carwash.model.AttendanceRecord;
 import com.sas.carwash.repository.AttendanceRepository;
@@ -293,6 +293,20 @@ public class EmployeeService {
 		return leaveRepository.findAllByOrderByIdDesc();
 	}
 
+	private List<Leave> getEmpMonthlyLeave(String employeeId, int year, int month) {
+		LocalDate start = LocalDate.of(year, month, 1);
+		LocalDate end = start.withDayOfMonth(start.lengthOfMonth()); // Gets the last day of the month
+		return leaveRepository.findByEmployeeIdAndDateBetween(employeeId, start, end);
+	}
+
+	private List<Leave> getEmpWeeklyLeave(String employeeId, LocalDate anyDateInWeek) {
+		// Get the Monday of that week
+		LocalDate weekStart = anyDateInWeek.with(DayOfWeek.MONDAY);
+		LocalDate weekEnd = weekStart.plusDays(6); // Sunday
+
+		return leaveRepository.findByEmployeeIdAndDateBetween(employeeId, weekStart, weekEnd);
+	}
+
 	private List<Attendance> getEmpMonthlyAttendance(String employeeId, int year, int month) {
 		LocalDate start = LocalDate.of(year, month, 1);
 		LocalDate end = start.withDayOfMonth(start.lengthOfMonth()); // Gets the last day of the month
@@ -307,125 +321,173 @@ public class EmployeeService {
 		return attendanceRepository.findByEmployeeIdAndDateBetween(employeeId, weekStart, weekEnd);
 	}
 
+
 	private BigDecimal calculateHourlySalary(List<Attendance> attendance, BigDecimal hourlyRate) {
 		int hoursWorked = attendance.stream().mapToInt(a -> a.getWorkingHours() != null ? a.getWorkingHours() : 0)
 				.sum();
 		return hourlyRate.multiply(BigDecimal.valueOf(hoursWorked));
 	}
 
-	public EmployeeSalary setupEmployeeSalary(String id, LocalDate salaryDate) throws IllegalStateException {
+	// Constants for salary calculations
+	final int FIXED_MONTH_DAYS = 30; // Assumed fixed days in a month for salary calculation
+	final int PAID_DAYS_IN_WEEK = 7; // Number of days in a week
+	final int WEEKS_IN_MONTH = 4; // Assumed weeks in a month for weekly salary calculation
 
+	public EmployeeSalary setupEmployeeSalary(String id, LocalDate salaryDate) throws IllegalStateException {
+		// Fetch employee details from the repository
 		Employee employee = employeeRepository.findById(id)
 				.orElseThrow(() -> new RuntimeException("Employee not found"));
 
 		int year = salaryDate.getYear();
 		int month = salaryDate.getMonthValue();
 
-		BigDecimal salaryEarned = null;
-		if (employee.getSalaryType().equals("MONTHLY")) {
-			if (employee.getSalarySettlementType().equals("MONTHLY")) {
-				salaryEarned = employee.getSalary();
-			}
-		} else if (employee.getSalaryType().equals("WEEKLY")) {
-			if (employee.getSalarySettlementType().equals("MONTHLY")) {
-				salaryEarned = employee.getSalary().multiply(BigDecimal.valueOf(4.33));
-			} else if (employee.getSalarySettlementType().equals("WEEKLY")) {
-				salaryEarned = employee.getSalary();
-			}
-		} else if (employee.getSalaryType().equals("DAILY")) {
-			if (employee.getSalarySettlementType().equals("MONTHLY")) {
-				List<Attendance> attendance = getEmpMonthlyAttendance(id, year, month); 
-				salaryEarned = employee.getSalary().multiply(BigDecimal.valueOf(attendance.size()));
-			} else if (employee.getSalarySettlementType().equals("WEEKLY")) {
-				List<Attendance> attendance = getEmpWeeklyAttendance(id, salaryDate); 
-				salaryEarned = employee.getSalary().multiply(BigDecimal.valueOf(attendance.size()));
-			} else if (employee.getSalarySettlementType().equals("DAILY")) {
-				salaryEarned = employee.getSalary();
-			}
-		} else if (employee.getSalaryType().equals("HOURLY")) {
-			if (employee.getSalarySettlementType().equals("MONTHLY")) {
-				List<Attendance> attendance = getEmpMonthlyAttendance(id, year, month);
-				salaryEarned = calculateHourlySalary(attendance, employee.getSalary());
-			} else if (employee.getSalarySettlementType().equals("WEEKLY")) {
-				List<Attendance> attendance = getEmpWeeklyAttendance(id, salaryDate);
+		BigDecimal salaryEarned = calculateSalary(employee, id, salaryDate, year, month);
 
-				salaryEarned = calculateHourlySalary(attendance, employee.getSalary());
-			} else if (employee.getSalarySettlementType().equals("DAILY")) {
-				Attendance attendance = attendanceRepository.findByEmployeeIdAndDate(id, salaryDate);
-				if (attendance.getWorkingHours() != null)
-					salaryEarned = employee.getSalary().multiply(BigDecimal.valueOf(attendance.getWorkingHours()));
-			}
-		}
-
+		// Throw exception if salary could not be computed
 		if (salaryEarned == null) {
-		    throw new IllegalStateException("Salary could not be computed. Possibly due to unsupported type/settlement combo.");
+			throw new IllegalStateException(
+					"Salary could not be computed. Possibly due to unsupported type/settlement combo.");
 		}
 
-		EmployeeSalary salary = EmployeeSalary.builder().empId(id).name(employee.getName())
-				.salaryAdvance(employee.getSalaryAdvance()).salaryEarned(salaryEarned)
-				.salarySettlementType(employee.getSalarySettlementType()).salaryType(employee.getSalaryType()).build();
+		// Build and return the EmployeeSalary object
+		return EmployeeSalary.builder()
+				.empId(id)
+				.name(employee.getName())
+				.salaryAdvance(employee.getSalaryAdvance())
+				.salaryEarned(salaryEarned)
+				.salarySettlementType(employee.getSalarySettlementType())
+				.salaryType(employee.getSalaryType())
+				.build();
+	}
 
-		return salary;
+	private BigDecimal calculateSalary(Employee employee, String id, LocalDate salaryDate, int year, int month) {
+		switch (employee.getSalaryType()) {
+			case "MONTHLY":
+				return calculateMonthlySalary(employee, id, year, month);
+			case "WEEKLY":
+				return calculateWeeklySalary(employee, id, salaryDate, year, month);
+			case "DAILY":
+				return calculateDailySalary(employee, id, salaryDate, year, month);
+			case "HOURLY":
+				return calculateHourlySalary(employee, id, salaryDate, year, month);
+			default:
+				return null;
+		}
+	}
 
+	private BigDecimal calculateMonthlySalary(Employee employee, String id, int year, int month) {
+		if (employee.getSalarySettlementType().equals("MONTHLY")) {
+			List<Leave> leaveList = getEmpMonthlyLeave(id, year, month);
+			BigDecimal dailyRate = employee.getSalary().divide(BigDecimal.valueOf(FIXED_MONTH_DAYS), 2, RoundingMode.HALF_UP);
+			int leaveDays = leaveList.size();
+			return employee.getSalary().subtract(dailyRate.multiply(BigDecimal.valueOf(leaveDays)));
+		}
+		return null;
+	}
+
+	private BigDecimal calculateWeeklySalary(Employee employee, String id, LocalDate salaryDate, int year, int month) {
+		BigDecimal dailyRate = employee.getSalary().divide(BigDecimal.valueOf(PAID_DAYS_IN_WEEK), 2, RoundingMode.HALF_UP);
+		if (employee.getSalarySettlementType().equals("MONTHLY")) {
+			List<Leave> leaveList = getEmpMonthlyLeave(id, year, month);
+			int leaveDays = leaveList.size();
+			BigDecimal salaryEarned = employee.getSalary().multiply(BigDecimal.valueOf(WEEKS_IN_MONTH));
+			return salaryEarned.subtract(dailyRate.multiply(BigDecimal.valueOf(leaveDays)));
+		} else if (employee.getSalarySettlementType().equals("WEEKLY")) {
+			List<Leave> leaveList = getEmpWeeklyLeave(id, salaryDate);
+			int leaveDays = leaveList.size();
+			return employee.getSalary().subtract(dailyRate.multiply(BigDecimal.valueOf(leaveDays)));
+		}
+		return null;
+	}
+
+	private BigDecimal calculateDailySalary(Employee employee, String id, LocalDate salaryDate, int year, int month) {
+		if (employee.getSalarySettlementType().equals("MONTHLY")) {
+			List<Leave> leaveList = getEmpMonthlyLeave(id, year, month);
+			return employee.getSalary().multiply(BigDecimal.valueOf(FIXED_MONTH_DAYS - leaveList.size()));
+		} else if (employee.getSalarySettlementType().equals("WEEKLY")) {
+			List<Leave> leaveList = getEmpWeeklyLeave(id, salaryDate);
+			return employee.getSalary().multiply(BigDecimal.valueOf(PAID_DAYS_IN_WEEK - leaveList.size()));
+		} else if (employee.getSalarySettlementType().equals("DAILY")) {
+			return employee.getSalary();
+		}
+		return null;
+	}
+
+	private BigDecimal calculateHourlySalary(Employee employee, String id, LocalDate salaryDate, int year, int month) {
+		if (employee.getSalarySettlementType().equals("MONTHLY")) {
+			List<Attendance> attendance = getEmpMonthlyAttendance(id, year, month);
+			return calculateHourlySalary(attendance, employee.getSalary());
+		} else if (employee.getSalarySettlementType().equals("WEEKLY")) {
+			List<Attendance> attendance = getEmpWeeklyAttendance(id, salaryDate);
+			return calculateHourlySalary(attendance, employee.getSalary());
+		} else if (employee.getSalarySettlementType().equals("DAILY")) {
+			Attendance attendance = attendanceRepository.findByEmployeeIdAndDate(id, salaryDate);
+			if (attendance.getWorkingHours() != null) {
+				return employee.getSalary().multiply(BigDecimal.valueOf(attendance.getWorkingHours()));
+			}
+		}
+		return null;
 	}
 
 	public EmployeeSalary settleEmployeeSalary(EmployeeSalary empSalary) {
-	    // Determine date range based on settlement type
-	    LocalDateTime startDate;
-	    LocalDateTime endDate;
+		// Determine date range based on settlement type
+		LocalDateTime startDate;
+		LocalDateTime endDate;
 
-	    LocalDate salaryLocalDate = empSalary.getSalaryDate().toLocalDate(); // Accepting salaryDate from frontend
+		LocalDate salaryLocalDate = empSalary.getSalaryDate().toLocalDate(); // Accepting salaryDate from frontend
 
-	    switch (empSalary.getSalarySettlementType()) {
-	        case "MONTHLY":
-	            startDate = salaryLocalDate.withDayOfMonth(1).atStartOfDay();
-	            endDate = salaryLocalDate.withDayOfMonth(salaryLocalDate.lengthOfMonth()).atTime(23, 59, 59);
-	            break;
-	        case "WEEKLY":
-	            startDate = salaryLocalDate.with(DayOfWeek.MONDAY).atStartOfDay();
-	            endDate = startDate.plusDays(6).with(LocalTime.MAX);
-	            break;
-	        case "DAILY":
-	            startDate = salaryLocalDate.atStartOfDay();
-	            endDate = salaryLocalDate.atTime(LocalTime.MAX);
-	            break;
-	        default:
-	            throw new IllegalArgumentException("Invalid salary settlement type");
-	    }
+		switch (empSalary.getSalarySettlementType()) {
+			case "MONTHLY":
+				startDate = salaryLocalDate.withDayOfMonth(1).atStartOfDay();
+				endDate = salaryLocalDate.withDayOfMonth(salaryLocalDate.lengthOfMonth()).atTime(23, 59, 59);
+				break;
+			case "WEEKLY":
+				startDate = salaryLocalDate.with(DayOfWeek.MONDAY).atStartOfDay();
+				endDate = startDate.plusDays(6).with(LocalTime.MAX);
+				break;
+			case "DAILY":
+				startDate = salaryLocalDate.atStartOfDay();
+				endDate = salaryLocalDate.atTime(LocalTime.MAX);
+				break;
+			default:
+				throw new IllegalArgumentException("Invalid salary settlement type");
+		}
 
-	    // Check if salary is already settled in that range
-	    boolean alreadySettled = employeeSalaryRepository.existsByEmpIdAndSalaryDateBetween(
-	            empSalary.getEmpId(), startDate, endDate
-	    );
+		// Check if salary is already settled in that range
+		boolean alreadySettled = employeeSalaryRepository.existsByEmpIdAndSalaryDateBetween(
+				empSalary.getEmpId(), startDate, endDate);
 
-	    if (alreadySettled) {
-	        throw new IllegalStateException("Salary already settled for this period.");
-	    }
+		if (alreadySettled) {
+			throw new IllegalStateException("Salary already settled for this period.");
+		}
 
-	    // Save salary & log expense
-	    empSalary.setSalaryDate(LocalDateTime.now());
-	    empSalary = employeeSalaryRepository.save(empSalary);
+		// Save salary & log expense
+		empSalary.setSalaryDate(LocalDateTime.now());
+		empSalary = employeeSalaryRepository.save(empSalary);
 
-	    //Record it as expense
-	    expenseService.saveSalaryExpense(empSalary);
-	    
-	    //calculate new salary advance and update it.
-	    Employee employee = employeeRepository.findById(empSalary.getEmpId())
+		// Record it as expense
+		expenseService.saveSalaryExpense(empSalary);
+
+		// calculate new salary advance and update it.
+		Employee employee = employeeRepository.findById(empSalary.getEmpId())
 				.orElseThrow(() -> new RuntimeException("Employee not found"));
-	    BigDecimal newSalaryAdvance = calculateNewSalaryAdvance(empSalary.getSalaryEarned(), empSalary.getSalaryPaid(), empSalary.getSalaryAdvance());
-	    employee.setSalaryAdvance(newSalaryAdvance);
-	    employeeRepository.save(employee);
-	    
-	    return empSalary;
+		BigDecimal newSalaryAdvance = calculateNewSalaryAdvance(empSalary.getSalaryEarned(), empSalary.getSalaryPaid(),
+				empSalary.getSalaryAdvance());
+		employee.setSalaryAdvance(newSalaryAdvance);
+		employeeRepository.save(employee);
+
+		return empSalary;
 	}
 
 	public BigDecimal calculateNewSalaryAdvance(BigDecimal salaryEarned, BigDecimal salaryPaid, BigDecimal oldAdvance) {
-	    if (salaryEarned == null) salaryEarned = BigDecimal.ZERO;
-	    if (salaryPaid == null) salaryPaid = BigDecimal.ZERO;
-	    if (oldAdvance == null) oldAdvance = BigDecimal.ZERO;
+		if (salaryEarned == null)
+			salaryEarned = BigDecimal.ZERO;
+		if (salaryPaid == null)
+			salaryPaid = BigDecimal.ZERO;
+		if (oldAdvance == null)
+			oldAdvance = BigDecimal.ZERO;
 
-	    return oldAdvance.subtract(salaryEarned.subtract(salaryPaid));
+		return oldAdvance.subtract(salaryEarned.subtract(salaryPaid));
 	}
-
 
 }
