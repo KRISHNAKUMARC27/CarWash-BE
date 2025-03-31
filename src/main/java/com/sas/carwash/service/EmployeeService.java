@@ -134,11 +134,17 @@ public class EmployeeService {
 		attendance.setEmployeeId(record.employeeId());
 		attendance.setEmployeeName(employee.getName());
 
-		if (record.reason() != null) {
-			if (existingAttendance != null && existingAttendance.getLeaveType() != null) {
+		if (existingAttendance != null) {
+			if (existingAttendance.getLeaveType() != null) {
 				throw new Exception("Leave already recorded for the employee");
+			} else {
+				if (record.reason() != null) {
+					//TODO .. check if employee can take leave after IN time.
+					throw new Exception("Attendance already recorded for the employee");
+				}
 			}
-
+		}
+		if (record.reason() != null) {
 			attendance.setLeaveType(record.reason());
 			Leave leave = Leave.builder().date(LocalDate.now()).employeeId(attendance.getEmployeeId())
 					.employeeName(attendance.getEmployeeName()).leaveType(attendance.getLeaveType()).build();
@@ -321,7 +327,6 @@ public class EmployeeService {
 		return attendanceRepository.findByEmployeeIdAndDateBetween(employeeId, weekStart, weekEnd);
 	}
 
-
 	private BigDecimal calculateHourlySalary(List<Attendance> attendance, BigDecimal hourlyRate) {
 		int hoursWorked = attendance.stream().mapToInt(a -> a.getWorkingHours() != null ? a.getWorkingHours() : 0)
 				.sum();
@@ -378,7 +383,8 @@ public class EmployeeService {
 	private BigDecimal calculateMonthlySalary(Employee employee, String id, int year, int month) {
 		if (employee.getSalarySettlementType().equals("MONTHLY")) {
 			List<Leave> leaveList = getEmpMonthlyLeave(id, year, month);
-			BigDecimal dailyRate = employee.getSalary().divide(BigDecimal.valueOf(FIXED_MONTH_DAYS), 2, RoundingMode.HALF_UP);
+			BigDecimal dailyRate = employee.getSalary().divide(BigDecimal.valueOf(FIXED_MONTH_DAYS), 2,
+					RoundingMode.HALF_UP);
 			int leaveDays = leaveList.size();
 			return employee.getSalary().subtract(dailyRate.multiply(BigDecimal.valueOf(leaveDays)));
 		}
@@ -386,7 +392,8 @@ public class EmployeeService {
 	}
 
 	private BigDecimal calculateWeeklySalary(Employee employee, String id, LocalDate salaryDate, int year, int month) {
-		BigDecimal dailyRate = employee.getSalary().divide(BigDecimal.valueOf(PAID_DAYS_IN_WEEK), 2, RoundingMode.HALF_UP);
+		BigDecimal dailyRate = employee.getSalary().divide(BigDecimal.valueOf(PAID_DAYS_IN_WEEK), 2,
+				RoundingMode.HALF_UP);
 		if (employee.getSalarySettlementType().equals("MONTHLY")) {
 			List<Leave> leaveList = getEmpMonthlyLeave(id, year, month);
 			int leaveDays = leaveList.size();
