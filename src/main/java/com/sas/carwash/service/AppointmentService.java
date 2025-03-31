@@ -16,7 +16,7 @@ public class AppointmentService {
 	private final AppointmentRepository appointmentRepository;
 
 	public Appointment save(Appointment appointment) {
-		appointment.setStatus("SCHEDULED");
+		// appointment.setStatus("SCHEDULED");
 		return appointmentRepository.save(appointment);
 	}
 
