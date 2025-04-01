@@ -117,6 +117,31 @@ public class EmployeeController {
 		return employeeService.getAttendanceByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
 	}
 
+	@GetMapping("/attendance/day/daily/{date}")
+	public Map<String, Object> getDayWiseDailyAttendance(@PathVariable String date) {
+		return employeeService.getDayWiseDailyAttendance(LocalDate.parse(date));
+	}
+
+	@GetMapping("/attendance/day/weekly/{year}/{week}")
+	public Map<String, Object> getDayWiseWeeklyAttendance(@PathVariable int year, @PathVariable int week) {
+		return employeeService.getDayWiseWeeklyAttendance(year, week);
+	}
+
+	@GetMapping("/attendance/day/monthly/{year}/{month}")
+	public Map<String, Object> getDayWiseMonthlyAttendance(@PathVariable int year, @PathVariable int month) {
+		return employeeService.getDayWiseMonthlyAttendance(year, month);
+	}
+
+	@GetMapping("/attendance/day/yearly/{year}")
+	public Map<String, Object> getDayWiseYearlyAttendance(@PathVariable int year) {
+		return employeeService.getDayWiseYearlyAttendance(year);
+	}
+
+	@GetMapping("/attendance/day/daterange")
+	public Map<String, Object> getDayWiseAttendanceByDateRange(@RequestParam String startDate, @RequestParam String endDate) {
+		return employeeService.getDayWiseAttendanceByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
+	}
+
 	@GetMapping("/leave")
 	public List<?> findAllLeave() {
 		return employeeService.findAllLeave();

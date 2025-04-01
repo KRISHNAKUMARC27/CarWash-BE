@@ -3,6 +3,7 @@ F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\service\EmployeeServ
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\LaborInventoryRepository.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\service\InvoiceService.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\DepartmentRepository.java
+F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\service\AttendanceScheduler.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\service\ServiceInventoryService.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\DmsApplication.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\model\AuthRequest.java

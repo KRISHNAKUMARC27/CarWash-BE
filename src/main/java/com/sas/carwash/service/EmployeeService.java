@@ -218,23 +218,6 @@ public class EmployeeService {
 		return processAttendance(records);
 	}
 
-	private Map<String, Object> processAttendance(List<Attendance> records) {
-		Map<String, Object> result = new HashMap<>();
-
-		long presentCount = records.stream().filter(Attendance::getPresent).count();
-		long absentCount = records.size() - presentCount;
-
-		Map<String, Integer> workingHoursPerEmployee = records.stream()
-				.collect(Collectors.groupingBy(Attendance::getEmployeeName,
-						Collectors.summingInt(att -> Optional.ofNullable(att.getWorkingHours()).orElse(0))));
-
-		result.put("totalPresent", presentCount);
-		result.put("totalAbsent", absentCount);
-		result.put("workingHours", workingHoursPerEmployee);
-
-		return result;
-	}
-
 	public Map<String, Object> getAttendanceByDateRange(LocalDate startDate, LocalDate endDate) {
 		List<Attendance> records = attendanceRepository.findAll().stream()
 				.filter(att -> !att.getDate().isBefore(startDate) && !att.getDate().isAfter(endDate))
@@ -242,6 +225,23 @@ public class EmployeeService {
 
 		return processAttendance(records);
 	}
+
+	private Map<String, Object> processAttendance(List<Attendance> records) {
+        Map<String, Object> result = new HashMap<>();
+
+        long presentCount = records.stream().filter(Attendance::getPresent).count();
+        long absentCount = records.size() - presentCount;
+
+        Map<String, Integer> workingHoursPerEmployee = records.stream()
+                .collect(Collectors.groupingBy(Attendance::getEmployeeName,
+                        Collectors.summingInt(att -> Optional.ofNullable(att.getWorkingHours()).orElse(0))));
+
+        result.put("totalPresent", presentCount);
+        result.put("totalAbsent", absentCount);
+        result.put("workingHours", workingHoursPerEmployee);
+
+        return result;
+    }
 
 	public Map<String, Object> getDailyLeave(LocalDate date) {
 		List<Leave> records = leaveRepository.findByDate(date);
@@ -495,6 +495,55 @@ public class EmployeeService {
 			oldAdvance = BigDecimal.ZERO;
 
 		return oldAdvance.subtract(salaryEarned.subtract(salaryPaid));
+	}
+
+	public Map<String, Object> getDayWiseDailyAttendance(LocalDate date) {
+		List<Attendance> records = attendanceRepository.findByDate(date);
+		return dayWiseProcessAttendance(records);
+	}
+
+	public Map<String, Object> getDayWiseWeeklyAttendance(int year, int week) {
+		List<Attendance> records = attendanceRepository.findAll().stream()
+				.filter(att -> att.getDate().getYear() == year && att.getDate().get(WeekFields.ISO.weekOfYear()) == week)
+				.collect(Collectors.toList());
+		return dayWiseProcessAttendance(records);
+	}
+
+	public Map<String, Object> getDayWiseMonthlyAttendance(int year, int month) {
+		List<Attendance> records = attendanceRepository.findAll().stream()
+				.filter(att -> att.getDate().getYear() == year && att.getDate().getMonthValue() == month)
+				.collect(Collectors.toList());
+		return dayWiseProcessAttendance(records);
+	}
+
+	public Map<String, Object> getDayWiseYearlyAttendance(int year) {
+		List<Attendance> records = attendanceRepository.findAll().stream()
+				.filter(att -> att.getDate().getYear() == year)
+				.collect(Collectors.toList());
+		return dayWiseProcessAttendance(records);
+	}
+
+	public Map<String, Object> getDayWiseAttendanceByDateRange(LocalDate startDate, LocalDate endDate) {
+		List<Attendance> records = attendanceRepository.findAll().stream()
+				.filter(att -> !att.getDate().isBefore(startDate) && !att.getDate().isAfter(endDate))
+				.collect(Collectors.toList());
+		return dayWiseProcessAttendance(records);
+	}
+
+	private Map<String, Object> dayWiseProcessAttendance(List<Attendance> records) {
+		Map<String, Object> result = new HashMap<>();
+
+		long totalPresent = records.stream().filter(Attendance::getPresent).count();
+		long totalAbsent = records.size() - totalPresent;
+
+		Map<String, Long> workingDaysPerEmployee = records.stream()
+				.collect(Collectors.groupingBy(Attendance::getEmployeeName, Collectors.counting()));
+
+		result.put("totalPresent", totalPresent);
+		result.put("totalAbsent", totalAbsent);
+		result.put("workingDaysPerEmployee", workingDaysPerEmployee);
+
+		return result;
 	}
 
 }
