@@ -5,7 +5,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -18,7 +18,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 @EnableMethodSecurity
@@ -26,11 +25,13 @@ public class SecurityConfig {
 
 	private final CustomUserDetailsService userDetailsService;
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final Environment environment;
 
 	public SecurityConfig(CustomUserDetailsService userDetailsService,
-			JwtAuthenticationFilter jwtAuthenticationFilter) {
+			JwtAuthenticationFilter jwtAuthenticationFilter, Environment environment) {
 		this.userDetailsService = userDetailsService;
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+		this.environment = environment;
 	}
 
 	@Bean
@@ -40,7 +41,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.GET, "/", "/index.html", "/static/**", "/**/*.js", "/**/*.css",
 								"/**/*.ico", "/**/*.png", "/**/*.jpg", "/**/*.jpeg", "/employee/**")
-						.permitAll().requestMatchers("/auth/**","/user/signup/**", "/jobCard/getPhotos/**").permitAll()
+						.permitAll().requestMatchers("/auth/**", "/user/signup/**", "/jobCard/getPhotos/**").permitAll()
 						.requestMatchers("/admin/**").hasRole("ADMIN").anyRequest().authenticated()
 
 				).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // Add JWT
@@ -50,39 +51,24 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	@Profile("dev")
-	public CorsFilter devCorsFilter() {
-		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of("*"));
-		configuration.setAllowCredentials(false);
-		// Add other CORS configurations as needed
-
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration);
-		return new CorsFilter(source);
-	}
-
-	@Bean
-	@Profile("prod")
-	public CorsFilter prodCorsFilter() {
-		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of("http://localhost:8080"));
-		configuration.setAllowCredentials(true);
-		// Add other CORS configurations as needed
-
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration);
-		return new CorsFilter(source);
-	}
-
-	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
+		List<String> activeProfiles = Arrays.asList(environment.getActiveProfiles());
+
+		if (activeProfiles.contains("prod")) {
+			// Prod-specific config
+			configuration.setAllowedOrigins(List.of("http://localhost:8080"));
+			configuration.setAllowCredentials(true);
+		} else {
+			// Dev or others - allow all origins
+			configuration.setAllowedOriginPatterns(List.of("*"));
+			configuration.setAllowCredentials(false); // Use pattern to support credentials + wildcard
+		}
 		configuration.setAllowedOrigins(List.of("http://localhost:8080")); // Allow all origins
 		configuration.setAllowedMethods(Arrays.asList("POST", "GET", "PUT", "OPTIONS", "DELETE", "PATCH")); // Allowed
 																											// methods
 		configuration.setAllowedHeaders(Arrays.asList("*")); // Allow all headers
-		configuration.setAllowCredentials(true); // No credentials
+		// No credentials
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", configuration); // Apply CORS to all endpoints
