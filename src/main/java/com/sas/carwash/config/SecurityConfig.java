@@ -57,6 +57,7 @@ public class SecurityConfig {
 
 		if (activeProfiles.contains("prod")) {
 			// Prod-specific config
+			System.out.println("Prod profile is active");
 			configuration.setAllowedOrigins(List.of("http://localhost:8080"));
 			configuration.setAllowCredentials(true);
 		} else {
