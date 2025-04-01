@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -17,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 @EnableMethodSecurity
@@ -47,18 +49,31 @@ public class SecurityConfig {
 		return http.build();
 	}
 
-	// Define the CORS configuration
-//	@Bean
-//	public CorsFilter corsFilter() {
-//	    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//	    CorsConfiguration config = new CorsConfiguration();
-//	    config.setAllowCredentials(true); // Allow cookies and credentials
-//	    config.addAllowedOrigin("*"); // Replace with your frontend origin
-//	    config.addAllowedHeader("*"); // Allow all headers
-//	    config.addAllowedMethod("*"); // Allow all HTTP methods
-//	    source.registerCorsConfiguration("/**", config);
-//	    return new CorsFilter(source);
-//	}
+	@Bean
+	@Profile("dev")
+	public CorsFilter devCorsFilter() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(List.of("*"));
+		configuration.setAllowCredentials(false);
+		// Add other CORS configurations as needed
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return new CorsFilter(source);
+	}
+
+	@Bean
+	@Profile("prod")
+	public CorsFilter prodCorsFilter() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(List.of("http://localhost:8080"));
+		configuration.setAllowCredentials(true);
+		// Add other CORS configurations as needed
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return new CorsFilter(source);
+	}
 
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
