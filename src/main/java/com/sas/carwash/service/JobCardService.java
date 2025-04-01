@@ -162,8 +162,10 @@ public class JobCardService {
 	public JobCard save(JobCard jobCard) {
 		jobCard.setJobId(getNextJobCardIdSequenceAsInteger("jobCardId"));
 		jobCard.setJobCreationDate(LocalDateTime.now());
-		jobCard.setNextFreeCheckKms(jobCard.getKiloMeters() + 1500);
-		jobCard.setNextServiceKms(jobCard.getKiloMeters() + 3000);
+		if (jobCard.getKiloMeters() != null) {
+			jobCard.setNextFreeCheckKms(jobCard.getKiloMeters() + 1500);
+			jobCard.setNextServiceKms(jobCard.getKiloMeters() + 3000);
+		}
 		jobCard = jobCardRepository.save(jobCard);
 
 		sendNotifications("JobCard opened - " + jobCard.getJobId(), jobCard.toString());
@@ -183,8 +185,10 @@ public class JobCardService {
 	}
 
 	public JobCard update(JobCard jobCard) {
-		jobCard.setNextFreeCheckKms(jobCard.getKiloMeters() + 1500);
-		jobCard.setNextServiceKms(jobCard.getKiloMeters() + 3000);
+		if (jobCard.getKiloMeters() != null) {
+			jobCard.setNextFreeCheckKms(jobCard.getKiloMeters() + 1500);
+			jobCard.setNextServiceKms(jobCard.getKiloMeters() + 3000);
+		}
 		return jobCardRepository.save(jobCard);
 	}
 
