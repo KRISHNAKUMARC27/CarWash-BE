@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.JobVehiclePhotos;
+import com.sas.carwash.model.FastJobCardRecord;
 import com.sas.carwash.service.JobCardService;
 
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,11 @@ public class JobCardController {
 	@PostMapping
 	public JobCard save(@RequestBody JobCard jobCard) {
 		return jobCardService.save(jobCard);
+	}
+
+	@PostMapping("/fastjobCard")
+	public JobCard createFastJobCard(@RequestBody FastJobCardRecord jobCard) throws Exception {
+		return jobCardService.createFastJobCard(jobCard);
 	}
 
 	@GetMapping("/status/{status}")

@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.boot.autoconfigure.batch.BatchProperties.Job;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -38,6 +39,7 @@ import com.sas.carwash.entity.JobVehiclePhotos;
 import com.sas.carwash.entity.ServiceInventory;
 import com.sas.carwash.entity.SparesInventory;
 import com.sas.carwash.model.CreditPayment;
+import com.sas.carwash.model.FastJobCardRecord;
 import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;
 import com.sas.carwash.repository.InvoiceRepository;
@@ -195,114 +197,131 @@ public class JobCardService {
 	// DIFFING LOGIC IS COMMENTED
 
 	// @Transactional(rollbackFor = Exception.class)
-//	public synchronized JobSpares updateJobSpares(JobSpares jobSpares) throws Exception {
-//
-//		JobSpares origJobSpares = jobSparesRepository.findById(jobSpares.getId()).orElse(null);
-//		// List<JobSparesInfo> origJobSparesInfoList = origJobSpares.getJobSparesInfo();
-//
-//		List<JobSparesInfo> jobSparesInfoList = jobSpares.getJobSparesInfo();
-//
-//		// Checking for quantity insufficiency
-//		for (JobSparesInfo jobSparesInfo : jobSparesInfoList) {
-//			SparesInventory spares = sparesService.findById(jobSparesInfo.getSparesId());
-//			if (spares != null) {
-//				if (origJobSpares != null) {
-//					List<JobSparesInfo> origJobSparesInfoList = origJobSpares.getJobSparesInfo();
-//					Optional<JobSparesInfo> origJobSparesInfoOpt = origJobSparesInfoList.stream()
-//							.filter(info -> info.getSparesId().equals(jobSparesInfo.getSparesId())).findFirst();
-//
-//					if (origJobSparesInfoOpt.isPresent()) {
-//						BigDecimal originalQty = origJobSparesInfoOpt.get().getQty();
-//						spares.setQty(spares.getQty().add(originalQty));
-//					}
-//				}
-//				if (jobSparesInfo.getQty().compareTo(spares.getQty()) > 0) {
-//					throw new Exception("Quantity of " + spares.getDesc() + " in Spares inventory (" + spares.getQty()
-//							+ ") is lesser than quantity of spares used for job (" + jobSparesInfo.getQty() + ")");
-//
-//				}
-//			}
-//		}
-//
-//		String exceptionMess = "";
-//
-//		if (origJobSpares != null) {
-//			List<JobSparesInfo> origJobSparesInfoList = origJobSpares.getJobSparesInfo();
-//			// some jobspares are deleted. hence add those back to jobSpares
-//			List<JobSparesInfo> deletedJobSparesInfoList = new ArrayList<>(origJobSparesInfoList);
-//			deletedJobSparesInfoList.removeAll(jobSparesInfoList);
-//
-//			for (JobSparesInfo deletedJobSparesInfo : deletedJobSparesInfoList) {
-//				SparesInventory deletedSpares = sparesService.findById(deletedJobSparesInfo.getSparesId());
-//				if (deletedSpares != null) {
-//					BigDecimal result = deletedSpares.getQty().add(deletedJobSparesInfo.getQty());
-//					deletedSpares.setQty(result);
-//					deletedSpares.setAmount(deletedSpares.getSellRate().multiply(result));
-//					try {
-//						sparesService.saveFromJobSpares(deletedSpares);
-//					} catch (OptimisticLockingFailureException e) {
-//						exceptionMess += "    Please retry!! Concurrent modification detected while updating deletedJobSpares for "
-//								+ deletedSpares.getDesc();
-//						// throw new Exception("Please retry!! Concurrent modification detected for " +
-//						// spares.getDesc());
-//					}
-//				} else {
-//					exceptionMess += "   " + deletedJobSparesInfo.getSparesAndLabour()
-//							+ " is not found in Spares Inventory    ";
-//				}
-//			}
-//			// }
-//		}
-//
-//		// test for empty scenario TODO
-//
-//		for (JobSparesInfo jobSparesInfo : jobSparesInfoList) {
-//			SparesInventory spares = sparesService.findById(jobSparesInfo.getSparesId());
-//			if (spares != null) {
-//
-//				// Since jobSpares object from FE contains entire object, check for values
-//				// present and add them.
-//				if (origJobSpares != null) {
-//					List<JobSparesInfo> origJobSparesInfoList = origJobSpares.getJobSparesInfo();
-//					Optional<JobSparesInfo> origJobSparesInfoOpt = origJobSparesInfoList.stream()
-//							.filter(info -> info.getSparesId().equals(jobSparesInfo.getSparesId())).findFirst();
-//
-//					if (origJobSparesInfoOpt.isPresent()) {
-//						BigDecimal originalQty = origJobSparesInfoOpt.get().getQty();
-//						spares.setQty(spares.getQty().add(originalQty));
-//					}
-//				}
-//				if (jobSparesInfo.getQty().compareTo(spares.getQty()) > 0) {
-//					exceptionMess += "   Quantity of " + spares.getDesc() + " in Spares inventory (" + spares.getQty()
-//							+ ") is lesser than quantity of spares used for job (" + jobSparesInfo.getQty() + ")   ";
-//
-//				} else {
-//					BigDecimal result = spares.getQty().subtract(jobSparesInfo.getQty());
-//					spares.setQty(result);
-//					spares.setAmount(spares.getSellRate().multiply(result));
-//					try {
-//						sparesService.saveFromJobSpares(spares);
-//					} catch (OptimisticLockingFailureException e) {
-//						exceptionMess += "    Please retry!! Concurrent modification detected for " + spares.getDesc();
-//						// throw new Exception("Please retry!! Concurrent modification detected for " +
-//						// spares.getDesc());
-//					}
-//				}
-//
-//			} else {
-//				exceptionMess += "   " + jobSparesInfo.getSparesAndLabour() + " is not found in Spares Inventory    ";
-//				// throw new Exception(jobSparesInfo.getSparesAndLabour() + " is not found in
-//				// Spares Inventory ");
-//				// should never come here
-//			}
-//		}
-//		if (!exceptionMess.isEmpty()) {
-//			jobSparesRepository.save(jobSpares);
-//			// This will cause the transaction to roll back
-//			throw new Exception(exceptionMess);
-//		}
-//		return jobSparesRepository.save(jobSpares);
-//	}
+	// public synchronized JobSpares updateJobSpares(JobSpares jobSpares) throws
+	// Exception {
+	//
+	// JobSpares origJobSpares =
+	// jobSparesRepository.findById(jobSpares.getId()).orElse(null);
+	// // List<JobSparesInfo> origJobSparesInfoList =
+	// origJobSpares.getJobSparesInfo();
+	//
+	// List<JobSparesInfo> jobSparesInfoList = jobSpares.getJobSparesInfo();
+	//
+	// // Checking for quantity insufficiency
+	// for (JobSparesInfo jobSparesInfo : jobSparesInfoList) {
+	// SparesInventory spares = sparesService.findById(jobSparesInfo.getSparesId());
+	// if (spares != null) {
+	// if (origJobSpares != null) {
+	// List<JobSparesInfo> origJobSparesInfoList = origJobSpares.getJobSparesInfo();
+	// Optional<JobSparesInfo> origJobSparesInfoOpt = origJobSparesInfoList.stream()
+	// .filter(info ->
+	// info.getSparesId().equals(jobSparesInfo.getSparesId())).findFirst();
+	//
+	// if (origJobSparesInfoOpt.isPresent()) {
+	// BigDecimal originalQty = origJobSparesInfoOpt.get().getQty();
+	// spares.setQty(spares.getQty().add(originalQty));
+	// }
+	// }
+	// if (jobSparesInfo.getQty().compareTo(spares.getQty()) > 0) {
+	// throw new Exception("Quantity of " + spares.getDesc() + " in Spares inventory
+	// (" + spares.getQty()
+	// + ") is lesser than quantity of spares used for job (" +
+	// jobSparesInfo.getQty() + ")");
+	//
+	// }
+	// }
+	// }
+	//
+	// String exceptionMess = "";
+	//
+	// if (origJobSpares != null) {
+	// List<JobSparesInfo> origJobSparesInfoList = origJobSpares.getJobSparesInfo();
+	// // some jobspares are deleted. hence add those back to jobSpares
+	// List<JobSparesInfo> deletedJobSparesInfoList = new
+	// ArrayList<>(origJobSparesInfoList);
+	// deletedJobSparesInfoList.removeAll(jobSparesInfoList);
+	//
+	// for (JobSparesInfo deletedJobSparesInfo : deletedJobSparesInfoList) {
+	// SparesInventory deletedSpares =
+	// sparesService.findById(deletedJobSparesInfo.getSparesId());
+	// if (deletedSpares != null) {
+	// BigDecimal result =
+	// deletedSpares.getQty().add(deletedJobSparesInfo.getQty());
+	// deletedSpares.setQty(result);
+	// deletedSpares.setAmount(deletedSpares.getSellRate().multiply(result));
+	// try {
+	// sparesService.saveFromJobSpares(deletedSpares);
+	// } catch (OptimisticLockingFailureException e) {
+	// exceptionMess += " Please retry!! Concurrent modification detected while
+	// updating deletedJobSpares for "
+	// + deletedSpares.getDesc();
+	// // throw new Exception("Please retry!! Concurrent modification detected for "
+	// +
+	// // spares.getDesc());
+	// }
+	// } else {
+	// exceptionMess += " " + deletedJobSparesInfo.getSparesAndLabour()
+	// + " is not found in Spares Inventory ";
+	// }
+	// }
+	// // }
+	// }
+	//
+	// // test for empty scenario TODO
+	//
+	// for (JobSparesInfo jobSparesInfo : jobSparesInfoList) {
+	// SparesInventory spares = sparesService.findById(jobSparesInfo.getSparesId());
+	// if (spares != null) {
+	//
+	// // Since jobSpares object from FE contains entire object, check for values
+	// // present and add them.
+	// if (origJobSpares != null) {
+	// List<JobSparesInfo> origJobSparesInfoList = origJobSpares.getJobSparesInfo();
+	// Optional<JobSparesInfo> origJobSparesInfoOpt = origJobSparesInfoList.stream()
+	// .filter(info ->
+	// info.getSparesId().equals(jobSparesInfo.getSparesId())).findFirst();
+	//
+	// if (origJobSparesInfoOpt.isPresent()) {
+	// BigDecimal originalQty = origJobSparesInfoOpt.get().getQty();
+	// spares.setQty(spares.getQty().add(originalQty));
+	// }
+	// }
+	// if (jobSparesInfo.getQty().compareTo(spares.getQty()) > 0) {
+	// exceptionMess += " Quantity of " + spares.getDesc() + " in Spares inventory
+	// (" + spares.getQty()
+	// + ") is lesser than quantity of spares used for job (" +
+	// jobSparesInfo.getQty() + ") ";
+	//
+	// } else {
+	// BigDecimal result = spares.getQty().subtract(jobSparesInfo.getQty());
+	// spares.setQty(result);
+	// spares.setAmount(spares.getSellRate().multiply(result));
+	// try {
+	// sparesService.saveFromJobSpares(spares);
+	// } catch (OptimisticLockingFailureException e) {
+	// exceptionMess += " Please retry!! Concurrent modification detected for " +
+	// spares.getDesc();
+	// // throw new Exception("Please retry!! Concurrent modification detected for "
+	// +
+	// // spares.getDesc());
+	// }
+	// }
+	//
+	// } else {
+	// exceptionMess += " " + jobSparesInfo.getSparesAndLabour() + " is not found in
+	// Spares Inventory ";
+	// // throw new Exception(jobSparesInfo.getSparesAndLabour() + " is not found in
+	// // Spares Inventory ");
+	// // should never come here
+	// }
+	// }
+	// if (!exceptionMess.isEmpty()) {
+	// jobSparesRepository.save(jobSpares);
+	// // This will cause the transaction to roll back
+	// throw new Exception(exceptionMess);
+	// }
+	// return jobSparesRepository.save(jobSpares);
+	// }
 
 	public synchronized JobSpares updateJobSpares(JobSpares jobSpares) throws Exception {
 
@@ -405,6 +424,7 @@ public class JobCardService {
 
 		}
 
+		jobSpares = calculateGrandTotal(jobSpares);
 		jobSpares = calculateGSTAndUpdateFields(jobSpares);
 		jobSpares = jobSparesRepository.save(jobSpares);
 
@@ -456,10 +476,13 @@ public class JobCardService {
 		return jobSpares;
 	}
 
-//	public JobSpares getJobSpares(String id) {
-//		return jobSparesRepository.findById(id).orElse(JobSpares.builder().jobSparesInfo(new ArrayList<>())
-//				.jobConsumablesInfo(new ArrayList<>()).jobLaborInfo(new ArrayList<>()).build());
-//	}
+	// public JobSpares getJobSpares(String id) {
+	// return
+	// jobSparesRepository.findById(id).orElse(JobSpares.builder().jobSparesInfo(new
+	// ArrayList<>())
+	// .jobConsumablesInfo(new ArrayList<>()).jobLaborInfo(new
+	// ArrayList<>()).build());
+	// }
 
 	public JobSpares getJobSpares(String id) {
 		JobSpares jobSpares = jobSparesRepository.findById(id)
@@ -507,25 +530,50 @@ public class JobCardService {
 		return jobCardRepository.save(origJobCard);
 	}
 
-//	private void calculateTotals(JobSpares origJobSpares) throws Exception {
-//		BigDecimal totalSparesValue = origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getAmount)
-//				.filter(amount -> amount != null) // Ensure no null values are encountered
-//				.reduce(BigDecimal.ZERO, BigDecimal::add);
-//
-//		BigDecimal totalLabourValue = origJobSpares.getJobLaborInfo().stream().map(JobSparesInfo::getAmount)
-//				.filter(amount -> amount != null) // Ensure no null values are encountered
-//				.reduce(BigDecimal.ZERO, BigDecimal::add);
-//
-//		BigDecimal totalConsumablesValue = origJobSpares.getJobConsumablesInfo().stream().map(JobSparesInfo::getAmount)
-//				.filter(amount -> amount != null) // Ensure no null values are encountered
-//				.reduce(BigDecimal.ZERO, BigDecimal::add);
-//
-//		BigDecimal grandTotal = totalSparesValue.add(totalLabourValue).add(totalConsumablesValue);
-//
-//		if (!grandTotal.equals(origJobSpares.getGrandTotal())) {
-//			throw new Exception("Total amount calculation is wrong in UI");
-//		}
-//	}
+	// private void calculateTotals(JobSpares origJobSpares) throws Exception {
+	// BigDecimal totalSparesValue =
+	// origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getAmount)
+	// .filter(amount -> amount != null) // Ensure no null values are encountered
+	// .reduce(BigDecimal.ZERO, BigDecimal::add);
+	//
+	// BigDecimal totalLabourValue =
+	// origJobSpares.getJobLaborInfo().stream().map(JobSparesInfo::getAmount)
+	// .filter(amount -> amount != null) // Ensure no null values are encountered
+	// .reduce(BigDecimal.ZERO, BigDecimal::add);
+	//
+	// BigDecimal totalConsumablesValue =
+	// origJobSpares.getJobConsumablesInfo().stream().map(JobSparesInfo::getAmount)
+	// .filter(amount -> amount != null) // Ensure no null values are encountered
+	// .reduce(BigDecimal.ZERO, BigDecimal::add);
+	//
+	// BigDecimal grandTotal =
+	// totalSparesValue.add(totalLabourValue).add(totalConsumablesValue);
+	//
+	// if (!grandTotal.equals(origJobSpares.getGrandTotal())) {
+	// throw new Exception("Total amount calculation is wrong in UI");
+	// }
+	// }
+
+	private JobSpares calculateGrandTotal(JobSpares origJobSpares) {
+		// Calculate total spares value
+		BigDecimal totalSparesValue = origJobSpares.getJobSparesInfo() != null
+				? origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
+						.reduce(BigDecimal.ZERO, BigDecimal::add)
+				: BigDecimal.ZERO;
+
+		// Calculate total Service value
+		BigDecimal totalServiceValue = origJobSpares.getJobServiceInfo() != null
+				? origJobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
+						.reduce(BigDecimal.ZERO, BigDecimal::add)
+				: BigDecimal.ZERO;
+
+		// Calculate the grand total
+		BigDecimal grandTotal = totalSparesValue.add(totalServiceValue);
+		origJobSpares.setGrandTotal(grandTotal);
+		origJobSpares.setTotalServiceValue(totalServiceValue);
+		origJobSpares.setTotalSparesValue(totalSparesValue);
+		return origJobSpares;
+	}
 
 	private void calculateTotals(JobSpares origJobSpares) throws Exception {
 		// Calculate total spares value
@@ -540,24 +588,13 @@ public class JobCardService {
 						.reduce(BigDecimal.ZERO, BigDecimal::add)
 				: BigDecimal.ZERO;
 
-		// Calculate total consumables value only if not null
-//		BigDecimal totalConsumablesValue = origJobSpares.getJobConsumablesInfo() != null
-//				? origJobSpares.getJobConsumablesInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
-//						.reduce(BigDecimal.ZERO, BigDecimal::add)
-//				: BigDecimal.ZERO;
-//
-//		BigDecimal totalExternalWorkValue = origJobSpares.getJobExternalWorkInfo() != null
-//				? origJobSpares.getJobExternalWorkInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
-//						.reduce(BigDecimal.ZERO, BigDecimal::add)
-//				: BigDecimal.ZERO;
-
 		// Calculate the grand total
 		BigDecimal grandTotal = totalSparesValue.add(totalServiceValue);
 		origJobSpares.setGrandTotal(grandTotal);
 		origJobSpares.setTotalServiceValue(totalServiceValue);
 		origJobSpares.setTotalSparesValue(totalSparesValue);
 
-		// Validate the grand total
+		// Validate the grand total//TODO CHECK IF BELOW LINE IS CORRECT ??
 		if (origJobSpares.getGrandTotal() != null && !grandTotal.equals(origJobSpares.getGrandTotal())) {
 			throw new Exception("Total amount calculation is wrong in UI");
 		}
@@ -580,307 +617,374 @@ public class JobCardService {
 
 	public ResponseEntity<?> generateJobCardPdf(String id) throws Exception {
 
-//		JobCard jobCard = jobCardRepository.findById(id).orElse(null);
-//		JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
-//
-//		if (jobCard == null) {
-//			throw new Exception("JobCard not found for id " + id);
-//			// should never get here.
-//		}
-//
-//		if (jobSpares == null) {
-//			throw new Exception("JobSpares not found for id " + id);
-//		}
-//
-//		// Create table with varying columns for different rows
-//		Table table = new Table(UnitValue.createPercentArray(new float[] { 30, 35, 35 }));
-//		table.setWidth(UnitValue.createPercentValue(100)); // Set the table width to 100%
-//
-//		Image image = new Image(ImageDataFactory.create("classpath:jm_logo_1.jpeg")); // Replace with the path to
-//		// your
-//		image.setMaxHeight(120);
-//		image.setMaxWidth(150);// image
-//		table.addCell(
-//				new Paragraph("").add(image).setVerticalAlignment(VerticalAlignment.MIDDLE).setKeepTogether(true));
-//
-//		table.addCell(createCellWithFixedSpace("Job Card No: ", stringNullCheck(jobCard.getJobId()), "\n", "Owner: ",
-//				stringNullCheck(jobCard.getOwnerName()), "\n", "Contact No: ",
-//				stringNullCheck(jobCard.getOwnerPhoneNumber())).setVerticalAlignment(VerticalAlignment.MIDDLE)
-//				.setHorizontalAlignment(HorizontalAlignment.LEFT));
-//
-//		table.addCell(createCellWithFixedSpace("Date: ", createDateString(jobCard.getJobCreationDate()), "\n",
-//				"Email: ", stringNullCheck(jobCard.getOwnerEmailId()), "\n", "Driver: ",
-//				stringNullCheck(jobCard.getDriver())).setFontSize(11).setVerticalAlignment(VerticalAlignment.MIDDLE)
-//				.setHorizontalAlignment(HorizontalAlignment.LEFT));
-//
-//		Table singleColumnTable = new Table(UnitValue.createPercentArray(new float[] { 100 }));
-//		singleColumnTable.setWidth(UnitValue.createPercentValue(100));
-//		singleColumnTable.addCell(createCellWithFixedSpace("Address: ", stringNullCheck(jobCard.getOwnerAddress()))
-//				.setFontSize(11).setVerticalAlignment(VerticalAlignment.MIDDLE)
-//				.setHorizontalAlignment(HorizontalAlignment.LEFT));
-//
-//		Table doubleColumnTable = new Table(UnitValue.createPercentArray(new float[] { 50, 50 }));
-//		doubleColumnTable.setWidth(UnitValue.createPercentValue(100));
-//		Cell ColumnCell = new Cell()
-//				.add(createCellWithFixedSpace("Vehicle Reg. No: ", stringNullCheck(jobCard.getVehicleRegNo()), "\n",
-//						"Vehicle Model: ", stringNullCheck(jobCard.getVehicleModel()), "\n", "Technician Name: ",
-//						stringNullCheck(jobCard.getTechnicianName())));
-//
-//		doubleColumnTable.addCell(ColumnCell);
-//
-//		Cell singleColumnCell1 = new Cell()
-//				.add(createCellWithFixedSpace("Type of Vehicle: " + stringNullCheck(jobCard.getVehicleName()), "\n",
-//						"K.M: " + stringNullCheck(jobCard.getKiloMeters()), "\n",
-//						"Vehicle Out Date: " + createDateString(jobCard.getVehicleOutDate())));
-//		doubleColumnTable.addCell(singleColumnCell1);
-//
-//		setMinWidth(table, 0, 1, 100f);
-//
-//		Table table1 = new Table(UnitValue.createPercentArray(new float[] { 30, 20, 20, 30 }));
-//		table1.setWidth(UnitValue.createPercentValue(100));
-//
-//		table1.addCell(new Cell().add(new Paragraph("ITEMS")).setBold());
-//		Cell okCell = new Cell().add(new Paragraph("OK")).setTextAlignment(TextAlignment.CENTER).setBold();
-//		table1.addCell(okCell);
-//		Cell notOkCell = new Cell().add(new Paragraph("NOT OK")).setTextAlignment(TextAlignment.CENTER).setBold();
-//		table1.addCell(notOkCell);
-//		Image image1 = new Image(ImageDataFactory.create("classpath:jm_scratch_pic.JPG"));
-//
-//		image1.setMaxHeight(720);
-//		image1.setMaxWidth(150);
-//		image1.setPaddingLeft(1);// image
-//
-//		table1.addCell(new Cell(11, 1).add(image1).setVerticalAlignment(VerticalAlignment.MIDDLE).setPaddingLeft(20));
-//
-//		table1.addCell(new Cell().add(new Paragraph("COVER")).setBold());
-//		updateVechicleItems(table1, jobCard.getCover());
-//
-//		table1.addCell(new Cell().add(new Paragraph("GLASS")).setBold());
-//		updateVechicleItems(table1, jobCard.getGlass());
-//
-//		table1.addCell(new Cell().add(new Paragraph("DASHBOARD & TOOLS")).setBold());
-//		updateVechicleItems(table1, jobCard.getDashboardAndTools());
-//
-//		table1.addCell(new Cell().add(new Paragraph("FUEL POINTS")).setBold());
-//		table1.addCell(stringNullCheck(jobCard.getFuelPoints()));
-//		table1.addCell("");
-//
-//		table1.addCell(new Cell().add(new Paragraph("SPARE WHEEL")).setBold());
-//		updateVechicleItems(table1, jobCard.getSpareWheel());
-//
-//		table1.addCell(new Cell().add(new Paragraph("JACKEY HANDLES")).setBold());
-//		updateVechicleItems(table1, jobCard.getJackeyHandles());
-//
-//		table1.addCell(new Cell().add(new Paragraph("TOOL KITS")).setBold());
-//		updateVechicleItems(table1, jobCard.getToolKits());
-//
-//		table1.addCell(new Cell().add(new Paragraph("PEN DRIVE")).setBold());
-//		updateVechicleItems(table1, jobCard.getPenDrive());
-//
-//		table1.addCell(new Cell().add(new Paragraph("WHEEL CAP")).setBold());
-//		updateVechicleItems(table1, jobCard.getWheelCap());
-//
-//		table1.addCell(new Cell().add(new Paragraph("A/c GRILLS")).setBold());
-//		updateVechicleItems(table1, jobCard.getAcGrills());
-//
-//		Table table2 = new Table(UnitValue.createPercentArray(new float[] { 60, 20, 20 }));
-//		table2.setWidth(UnitValue.createPercentValue(100));
-//
-//		Cell customerComplaintsCell = new Cell().add(new Paragraph("CUSTOMER COMPLAINTS"))
-//				.setTextAlignment(TextAlignment.CENTER).setBold();
-//
-//		Cell completedCell = new Cell().add(new Paragraph("COMPLETED")).setTextAlignment(TextAlignment.CENTER)
-//				.setBold();
-//
-//		Cell remarksCell = new Cell().add(new Paragraph("REMARKS")).setTextAlignment(TextAlignment.CENTER).setBold();
-//
-//		table2.addHeaderCell(customerComplaintsCell);
-//		table2.addHeaderCell(completedCell);
-//		table2.addHeaderCell(remarksCell);
-//
-//		for (JobCardInfo jobInfo : jobCard.getJobInfo()) {
-//			table2.addCell(stringNullCheck(jobInfo.getComplaints()));
-//			table2.addCell(stringNullCheck(jobInfo.getCompleted()));
-//			table2.addCell(stringNullCheck(jobInfo.getRemarks()));
-//		}
-//
-//		Table table3 = null;
-//		if (jobSpares != null) {
-//			table3 = new Table(UnitValue.createPercentArray(new float[] { 50, 10, 20, 30 }));
-//			table3.setWidth(UnitValue.createPercentValue(100));
-//			if (jobSpares.getJobSparesInfo() != null && jobSpares.getJobSparesInfo().get(0).getSparesAndLabour() != null) {
-//				
-//				Cell sparesCell = new Cell().add(new Paragraph("Spares")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//
-//				Cell qtySparesCell = new Cell().add(new Paragraph("Qty.")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//
-//				Cell rateSparesCell = new Cell().add(new Paragraph("Rate")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//
-//				Cell amountSparesCell = new Cell().add(new Paragraph("Amount")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//
-//				table3.addCell(sparesCell);
-//				table3.addCell(qtySparesCell);
-//				table3.addCell(rateSparesCell);
-//				table3.addCell(amountSparesCell);
-//				for (JobSparesInfo jobSparesInfo : jobSpares.getJobSparesInfo()) {
-//					table3.addCell(stringNullCheck(jobSparesInfo.getSparesAndLabour()));
-//					table3.addCell(new Cell().add(new Paragraph(jobSparesInfo.getQty().toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//					table3.addCell(new Cell().add(new Paragraph(jobSparesInfo.getRate().toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//					table3.addCell(new Cell().add(new Paragraph(jobSparesInfo.getAmount().toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//				}
-//			}
-//			if (jobSpares.getJobConsumablesInfo() != null && jobSpares.getJobConsumablesInfo().get(0).getSparesAndLabour() != null) {
-//				Cell labourCell = new Cell().add(new Paragraph("Consumables")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				Cell qtyLabourCell = new Cell().add(new Paragraph("Qty.")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				Cell rateLabourCell = new Cell().add(new Paragraph("Rate")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				Cell amountLabourCell = new Cell().add(new Paragraph("Amount")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				table3.addCell(labourCell);
-//				table3.addCell(qtyLabourCell);
-//				table3.addCell(rateLabourCell);
-//				table3.addCell(amountLabourCell);
-//
-//				for (JobSparesInfo jobLaborInfo : jobSpares.getJobConsumablesInfo()) {
-//					table3.addCell(stringNullCheck(jobLaborInfo.getSparesAndLabour()));
-//					table3.addCell(new Cell().add(new Paragraph("")).setTextAlignment(TextAlignment.RIGHT));
-//					table3.addCell(new Cell().add(new Paragraph("")).setTextAlignment(TextAlignment.RIGHT));
-//					table3.addCell(new Cell().add(new Paragraph(jobLaborInfo.getAmount().toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//				}
-//			}
-//			if (jobSpares.getJobLaborInfo() != null && jobSpares.getJobLaborInfo().get(0).getSparesAndLabour() != null) {
-//				Cell labourCell = new Cell().add(new Paragraph("Labour")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				Cell qtyLabourCell = new Cell().add(new Paragraph("Qty.")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				Cell rateLabourCell = new Cell().add(new Paragraph("Rate")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				Cell amountLabourCell = new Cell().add(new Paragraph("Amount")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				table3.addCell(labourCell);
-//				table3.addCell(qtyLabourCell);
-//				table3.addCell(rateLabourCell);
-//				table3.addCell(amountLabourCell);
-//
-//				for (JobSparesInfo jobLaborInfo : jobSpares.getJobLaborInfo()) {
-//					table3.addCell(stringNullCheck(jobLaborInfo.getSparesAndLabour()));
-//					table3.addCell(new Cell().add(new Paragraph(jobLaborInfo.getQty().toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//					table3.addCell(new Cell().add(new Paragraph(jobLaborInfo.getRate().toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//					table3.addCell(new Cell().add(new Paragraph(jobLaborInfo.getAmount().toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//				}
-//			}
-//			if (jobSpares.getJobExternalWorkInfo() != null && jobSpares.getJobExternalWorkInfo().get(0).getSparesAndLabour() != null) {
-//				Cell externalWorkCell = new Cell().add(new Paragraph("ExternalWork"))
-//						.setTextAlignment(TextAlignment.CENTER).setBold();
-//				Cell qtyExternalWorkCell = new Cell().add(new Paragraph("Qty.")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				Cell rateExternalWorkCell = new Cell().add(new Paragraph("Rate")).setTextAlignment(TextAlignment.CENTER)
-//						.setBold();
-//				Cell amountExternalWorkCell = new Cell().add(new Paragraph("Amount"))
-//						.setTextAlignment(TextAlignment.CENTER).setBold();
-//				table3.addCell(externalWorkCell);
-//				table3.addCell(qtyExternalWorkCell);
-//				table3.addCell(rateExternalWorkCell);
-//				table3.addCell(amountExternalWorkCell);
-//
-//				for (JobSparesInfo jobExternalWorkInfo : jobSpares.getJobExternalWorkInfo()) {
-//					table3.addCell(stringNullCheck(jobExternalWorkInfo.getSparesAndLabour()));
-//					table3.addCell(new Cell().add(
-//							new Paragraph(jobExternalWorkInfo.getQty() != null ? jobExternalWorkInfo.getQty().toString()
-//									: BigDecimal.ZERO.toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//					table3.addCell(new Cell().add(new Paragraph(
-//							jobExternalWorkInfo.getRate() != null ? jobExternalWorkInfo.getRate().toString()
-//									: BigDecimal.ZERO.toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//					table3.addCell(new Cell().add(new Paragraph(
-//							jobExternalWorkInfo.getAmount() != null ? jobExternalWorkInfo.getAmount().toString()
-//									: BigDecimal.ZERO.toString()))
-//							.setTextAlignment(TextAlignment.RIGHT));
-//				}
-//			}
-//
-//			table3.addCell(new Cell(1, 2).add(new Paragraph("Total Spares Value")).setTextAlignment(TextAlignment.RIGHT)
-//					.setBold());
-//			table3.addCell(new Cell(1, 2).add(new Paragraph(stringNullCheck(jobSpares.getTotalSparesValue()))
-//					.setTextAlignment(TextAlignment.RIGHT)));
-//			table3.addCell(new Cell(1, 2).add(new Paragraph("Total Consumables Value"))
-//					.setTextAlignment(TextAlignment.RIGHT).setBold());
-//			table3.addCell(new Cell(1, 2).add(new Paragraph(stringNullCheck(jobSpares.getTotalConsumablesValue()))
-//					.setTextAlignment(TextAlignment.RIGHT)));
-//
-//			table3.addCell(new Cell(1, 2).add(new Paragraph("Total Labour Value")).setTextAlignment(TextAlignment.RIGHT)
-//					.setBold());
-//			table3.addCell(new Cell(1, 2).add(new Paragraph(stringNullCheck(jobSpares.getTotalLabourValue()))
-//					.setTextAlignment(TextAlignment.RIGHT)));
-//
-//			table3.addCell(new Cell(1, 2).add(new Paragraph("Total ExternalWork Value"))
-//					.setTextAlignment(TextAlignment.RIGHT).setBold());
-//			table3.addCell(new Cell(1, 2).add(new Paragraph(stringNullCheck(jobSpares.getTotalExternalWorkValue()))
-//					.setTextAlignment(TextAlignment.RIGHT)));
-//
-//			table3.addCell(
-//					new Cell(1, 2).add(new Paragraph("Grand Total")).setTextAlignment(TextAlignment.RIGHT).setBold());
-//			table3.addCell(new Cell(1, 2).add(
-//					new Paragraph(stringNullCheck(jobSpares.getGrandTotal())).setTextAlignment(TextAlignment.RIGHT)));
-//		}
-//
-////		try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-////				PdfWriter pdfWriter = new PdfWriter(outputStream);
-////				PdfDocument pdfDocument = new PdfDocument(pdfWriter);
-////				Document document = new Document(pdfDocument)) {
-////
-////			document.add(table);
-////			document.add(singleColumnTable);
-////			document.add(doubleColumnTable);
-////			document.add(table1);
-////			document.add(table2);
-////			if (table3 != null) {
-////				document.add(table3);
-////			}
-////			ByteArrayResource resource = new ByteArrayResource(outputStream.toByteArray());
-////			String filename = jobCard.getJobId() + "_" + jobCard.getVehicleRegNo() + ".pdf";
-////			HttpHeaders headers = new HttpHeaders();
-////			headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
-////			return ResponseEntity.ok().headers(headers).contentLength(resource.contentLength())
-////					.contentType(MediaType.APPLICATION_PDF).body(resource);
-////		} catch (Exception e) {
-////			throw new Exception(e);
-////		}
-//
-//		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-//		PdfWriter pdfWriter = new PdfWriter(outputStream);
-//		PdfDocument pdfDocument = new PdfDocument(pdfWriter);
-//		Document document = new Document(pdfDocument);
-//
-//		document.add(table);
-//		document.add(singleColumnTable);
-//		document.add(doubleColumnTable);
-//		document.add(table1);
-//		document.add(table2);
-//		if (table3 != null) {
-//			document.add(table3);
-//		}
-//		document.close();
-//		pdfDocument.close();
-//		pdfWriter.close();
-//		outputStream.close();
-//
-//		ByteArrayResource resource = new ByteArrayResource(outputStream.toByteArray());
-//		String filename = "JobCard_" + jobCard.getJobId() + "_" + jobCard.getVehicleRegNo() + ".pdf";
+		// JobCard jobCard = jobCardRepository.findById(id).orElse(null);
+		// JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
+		//
+		// if (jobCard == null) {
+		// throw new Exception("JobCard not found for id " + id);
+		// // should never get here.
+		// }
+		//
+		// if (jobSpares == null) {
+		// throw new Exception("JobSpares not found for id " + id);
+		// }
+		//
+		// // Create table with varying columns for different rows
+		// Table table = new Table(UnitValue.createPercentArray(new float[] { 30, 35, 35
+		// }));
+		// table.setWidth(UnitValue.createPercentValue(100)); // Set the table width to
+		// 100%
+		//
+		// Image image = new Image(ImageDataFactory.create("classpath:jm_logo_1.jpeg"));
+		// // Replace with the path to
+		// // your
+		// image.setMaxHeight(120);
+		// image.setMaxWidth(150);// image
+		// table.addCell(
+		// new
+		// Paragraph("").add(image).setVerticalAlignment(VerticalAlignment.MIDDLE).setKeepTogether(true));
+		//
+		// table.addCell(createCellWithFixedSpace("Job Card No: ",
+		// stringNullCheck(jobCard.getJobId()), "\n", "Owner: ",
+		// stringNullCheck(jobCard.getOwnerName()), "\n", "Contact No: ",
+		// stringNullCheck(jobCard.getOwnerPhoneNumber())).setVerticalAlignment(VerticalAlignment.MIDDLE)
+		// .setHorizontalAlignment(HorizontalAlignment.LEFT));
+		//
+		// table.addCell(createCellWithFixedSpace("Date: ",
+		// createDateString(jobCard.getJobCreationDate()), "\n",
+		// "Email: ", stringNullCheck(jobCard.getOwnerEmailId()), "\n", "Driver: ",
+		// stringNullCheck(jobCard.getDriver())).setFontSize(11).setVerticalAlignment(VerticalAlignment.MIDDLE)
+		// .setHorizontalAlignment(HorizontalAlignment.LEFT));
+		//
+		// Table singleColumnTable = new Table(UnitValue.createPercentArray(new float[]
+		// { 100 }));
+		// singleColumnTable.setWidth(UnitValue.createPercentValue(100));
+		// singleColumnTable.addCell(createCellWithFixedSpace("Address: ",
+		// stringNullCheck(jobCard.getOwnerAddress()))
+		// .setFontSize(11).setVerticalAlignment(VerticalAlignment.MIDDLE)
+		// .setHorizontalAlignment(HorizontalAlignment.LEFT));
+		//
+		// Table doubleColumnTable = new Table(UnitValue.createPercentArray(new float[]
+		// { 50, 50 }));
+		// doubleColumnTable.setWidth(UnitValue.createPercentValue(100));
+		// Cell ColumnCell = new Cell()
+		// .add(createCellWithFixedSpace("Vehicle Reg. No: ",
+		// stringNullCheck(jobCard.getVehicleRegNo()), "\n",
+		// "Vehicle Model: ", stringNullCheck(jobCard.getVehicleModel()), "\n",
+		// "Technician Name: ",
+		// stringNullCheck(jobCard.getTechnicianName())));
+		//
+		// doubleColumnTable.addCell(ColumnCell);
+		//
+		// Cell singleColumnCell1 = new Cell()
+		// .add(createCellWithFixedSpace("Type of Vehicle: " +
+		// stringNullCheck(jobCard.getVehicleName()), "\n",
+		// "K.M: " + stringNullCheck(jobCard.getKiloMeters()), "\n",
+		// "Vehicle Out Date: " + createDateString(jobCard.getVehicleOutDate())));
+		// doubleColumnTable.addCell(singleColumnCell1);
+		//
+		// setMinWidth(table, 0, 1, 100f);
+		//
+		// Table table1 = new Table(UnitValue.createPercentArray(new float[] { 30, 20,
+		// 20, 30 }));
+		// table1.setWidth(UnitValue.createPercentValue(100));
+		//
+		// table1.addCell(new Cell().add(new Paragraph("ITEMS")).setBold());
+		// Cell okCell = new Cell().add(new
+		// Paragraph("OK")).setTextAlignment(TextAlignment.CENTER).setBold();
+		// table1.addCell(okCell);
+		// Cell notOkCell = new Cell().add(new Paragraph("NOT
+		// OK")).setTextAlignment(TextAlignment.CENTER).setBold();
+		// table1.addCell(notOkCell);
+		// Image image1 = new
+		// Image(ImageDataFactory.create("classpath:jm_scratch_pic.JPG"));
+		//
+		// image1.setMaxHeight(720);
+		// image1.setMaxWidth(150);
+		// image1.setPaddingLeft(1);// image
+		//
+		// table1.addCell(new Cell(11,
+		// 1).add(image1).setVerticalAlignment(VerticalAlignment.MIDDLE).setPaddingLeft(20));
+		//
+		// table1.addCell(new Cell().add(new Paragraph("COVER")).setBold());
+		// updateVechicleItems(table1, jobCard.getCover());
+		//
+		// table1.addCell(new Cell().add(new Paragraph("GLASS")).setBold());
+		// updateVechicleItems(table1, jobCard.getGlass());
+		//
+		// table1.addCell(new Cell().add(new Paragraph("DASHBOARD & TOOLS")).setBold());
+		// updateVechicleItems(table1, jobCard.getDashboardAndTools());
+		//
+		// table1.addCell(new Cell().add(new Paragraph("FUEL POINTS")).setBold());
+		// table1.addCell(stringNullCheck(jobCard.getFuelPoints()));
+		// table1.addCell("");
+		//
+		// table1.addCell(new Cell().add(new Paragraph("SPARE WHEEL")).setBold());
+		// updateVechicleItems(table1, jobCard.getSpareWheel());
+		//
+		// table1.addCell(new Cell().add(new Paragraph("JACKEY HANDLES")).setBold());
+		// updateVechicleItems(table1, jobCard.getJackeyHandles());
+		//
+		// table1.addCell(new Cell().add(new Paragraph("TOOL KITS")).setBold());
+		// updateVechicleItems(table1, jobCard.getToolKits());
+		//
+		// table1.addCell(new Cell().add(new Paragraph("PEN DRIVE")).setBold());
+		// updateVechicleItems(table1, jobCard.getPenDrive());
+		//
+		// table1.addCell(new Cell().add(new Paragraph("WHEEL CAP")).setBold());
+		// updateVechicleItems(table1, jobCard.getWheelCap());
+		//
+		// table1.addCell(new Cell().add(new Paragraph("A/c GRILLS")).setBold());
+		// updateVechicleItems(table1, jobCard.getAcGrills());
+		//
+		// Table table2 = new Table(UnitValue.createPercentArray(new float[] { 60, 20,
+		// 20 }));
+		// table2.setWidth(UnitValue.createPercentValue(100));
+		//
+		// Cell customerComplaintsCell = new Cell().add(new Paragraph("CUSTOMER
+		// COMPLAINTS"))
+		// .setTextAlignment(TextAlignment.CENTER).setBold();
+		//
+		// Cell completedCell = new Cell().add(new
+		// Paragraph("COMPLETED")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		//
+		// Cell remarksCell = new Cell().add(new
+		// Paragraph("REMARKS")).setTextAlignment(TextAlignment.CENTER).setBold();
+		//
+		// table2.addHeaderCell(customerComplaintsCell);
+		// table2.addHeaderCell(completedCell);
+		// table2.addHeaderCell(remarksCell);
+		//
+		// for (JobCardInfo jobInfo : jobCard.getJobInfo()) {
+		// table2.addCell(stringNullCheck(jobInfo.getComplaints()));
+		// table2.addCell(stringNullCheck(jobInfo.getCompleted()));
+		// table2.addCell(stringNullCheck(jobInfo.getRemarks()));
+		// }
+		//
+		// Table table3 = null;
+		// if (jobSpares != null) {
+		// table3 = new Table(UnitValue.createPercentArray(new float[] { 50, 10, 20, 30
+		// }));
+		// table3.setWidth(UnitValue.createPercentValue(100));
+		// if (jobSpares.getJobSparesInfo() != null &&
+		// jobSpares.getJobSparesInfo().get(0).getSparesAndLabour() != null) {
+		//
+		// Cell sparesCell = new Cell().add(new
+		// Paragraph("Spares")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		//
+		// Cell qtySparesCell = new Cell().add(new
+		// Paragraph("Qty.")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		//
+		// Cell rateSparesCell = new Cell().add(new
+		// Paragraph("Rate")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		//
+		// Cell amountSparesCell = new Cell().add(new
+		// Paragraph("Amount")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		//
+		// table3.addCell(sparesCell);
+		// table3.addCell(qtySparesCell);
+		// table3.addCell(rateSparesCell);
+		// table3.addCell(amountSparesCell);
+		// for (JobSparesInfo jobSparesInfo : jobSpares.getJobSparesInfo()) {
+		// table3.addCell(stringNullCheck(jobSparesInfo.getSparesAndLabour()));
+		// table3.addCell(new Cell().add(new
+		// Paragraph(jobSparesInfo.getQty().toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// table3.addCell(new Cell().add(new
+		// Paragraph(jobSparesInfo.getRate().toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// table3.addCell(new Cell().add(new
+		// Paragraph(jobSparesInfo.getAmount().toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// }
+		// }
+		// if (jobSpares.getJobConsumablesInfo() != null &&
+		// jobSpares.getJobConsumablesInfo().get(0).getSparesAndLabour() != null) {
+		// Cell labourCell = new Cell().add(new
+		// Paragraph("Consumables")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// Cell qtyLabourCell = new Cell().add(new
+		// Paragraph("Qty.")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// Cell rateLabourCell = new Cell().add(new
+		// Paragraph("Rate")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// Cell amountLabourCell = new Cell().add(new
+		// Paragraph("Amount")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// table3.addCell(labourCell);
+		// table3.addCell(qtyLabourCell);
+		// table3.addCell(rateLabourCell);
+		// table3.addCell(amountLabourCell);
+		//
+		// for (JobSparesInfo jobLaborInfo : jobSpares.getJobConsumablesInfo()) {
+		// table3.addCell(stringNullCheck(jobLaborInfo.getSparesAndLabour()));
+		// table3.addCell(new Cell().add(new
+		// Paragraph("")).setTextAlignment(TextAlignment.RIGHT));
+		// table3.addCell(new Cell().add(new
+		// Paragraph("")).setTextAlignment(TextAlignment.RIGHT));
+		// table3.addCell(new Cell().add(new
+		// Paragraph(jobLaborInfo.getAmount().toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// }
+		// }
+		// if (jobSpares.getJobLaborInfo() != null &&
+		// jobSpares.getJobLaborInfo().get(0).getSparesAndLabour() != null) {
+		// Cell labourCell = new Cell().add(new
+		// Paragraph("Labour")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// Cell qtyLabourCell = new Cell().add(new
+		// Paragraph("Qty.")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// Cell rateLabourCell = new Cell().add(new
+		// Paragraph("Rate")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// Cell amountLabourCell = new Cell().add(new
+		// Paragraph("Amount")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// table3.addCell(labourCell);
+		// table3.addCell(qtyLabourCell);
+		// table3.addCell(rateLabourCell);
+		// table3.addCell(amountLabourCell);
+		//
+		// for (JobSparesInfo jobLaborInfo : jobSpares.getJobLaborInfo()) {
+		// table3.addCell(stringNullCheck(jobLaborInfo.getSparesAndLabour()));
+		// table3.addCell(new Cell().add(new
+		// Paragraph(jobLaborInfo.getQty().toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// table3.addCell(new Cell().add(new
+		// Paragraph(jobLaborInfo.getRate().toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// table3.addCell(new Cell().add(new
+		// Paragraph(jobLaborInfo.getAmount().toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// }
+		// }
+		// if (jobSpares.getJobExternalWorkInfo() != null &&
+		// jobSpares.getJobExternalWorkInfo().get(0).getSparesAndLabour() != null) {
+		// Cell externalWorkCell = new Cell().add(new Paragraph("ExternalWork"))
+		// .setTextAlignment(TextAlignment.CENTER).setBold();
+		// Cell qtyExternalWorkCell = new Cell().add(new
+		// Paragraph("Qty.")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// Cell rateExternalWorkCell = new Cell().add(new
+		// Paragraph("Rate")).setTextAlignment(TextAlignment.CENTER)
+		// .setBold();
+		// Cell amountExternalWorkCell = new Cell().add(new Paragraph("Amount"))
+		// .setTextAlignment(TextAlignment.CENTER).setBold();
+		// table3.addCell(externalWorkCell);
+		// table3.addCell(qtyExternalWorkCell);
+		// table3.addCell(rateExternalWorkCell);
+		// table3.addCell(amountExternalWorkCell);
+		//
+		// for (JobSparesInfo jobExternalWorkInfo : jobSpares.getJobExternalWorkInfo())
+		// {
+		// table3.addCell(stringNullCheck(jobExternalWorkInfo.getSparesAndLabour()));
+		// table3.addCell(new Cell().add(
+		// new Paragraph(jobExternalWorkInfo.getQty() != null ?
+		// jobExternalWorkInfo.getQty().toString()
+		// : BigDecimal.ZERO.toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// table3.addCell(new Cell().add(new Paragraph(
+		// jobExternalWorkInfo.getRate() != null ?
+		// jobExternalWorkInfo.getRate().toString()
+		// : BigDecimal.ZERO.toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// table3.addCell(new Cell().add(new Paragraph(
+		// jobExternalWorkInfo.getAmount() != null ?
+		// jobExternalWorkInfo.getAmount().toString()
+		// : BigDecimal.ZERO.toString()))
+		// .setTextAlignment(TextAlignment.RIGHT));
+		// }
+		// }
+		//
+		// table3.addCell(new Cell(1, 2).add(new Paragraph("Total Spares
+		// Value")).setTextAlignment(TextAlignment.RIGHT)
+		// .setBold());
+		// table3.addCell(new Cell(1, 2).add(new
+		// Paragraph(stringNullCheck(jobSpares.getTotalSparesValue()))
+		// .setTextAlignment(TextAlignment.RIGHT)));
+		// table3.addCell(new Cell(1, 2).add(new Paragraph("Total Consumables Value"))
+		// .setTextAlignment(TextAlignment.RIGHT).setBold());
+		// table3.addCell(new Cell(1, 2).add(new
+		// Paragraph(stringNullCheck(jobSpares.getTotalConsumablesValue()))
+		// .setTextAlignment(TextAlignment.RIGHT)));
+		//
+		// table3.addCell(new Cell(1, 2).add(new Paragraph("Total Labour
+		// Value")).setTextAlignment(TextAlignment.RIGHT)
+		// .setBold());
+		// table3.addCell(new Cell(1, 2).add(new
+		// Paragraph(stringNullCheck(jobSpares.getTotalLabourValue()))
+		// .setTextAlignment(TextAlignment.RIGHT)));
+		//
+		// table3.addCell(new Cell(1, 2).add(new Paragraph("Total ExternalWork Value"))
+		// .setTextAlignment(TextAlignment.RIGHT).setBold());
+		// table3.addCell(new Cell(1, 2).add(new
+		// Paragraph(stringNullCheck(jobSpares.getTotalExternalWorkValue()))
+		// .setTextAlignment(TextAlignment.RIGHT)));
+		//
+		// table3.addCell(
+		// new Cell(1, 2).add(new Paragraph("Grand
+		// Total")).setTextAlignment(TextAlignment.RIGHT).setBold());
+		// table3.addCell(new Cell(1, 2).add(
+		// new
+		// Paragraph(stringNullCheck(jobSpares.getGrandTotal())).setTextAlignment(TextAlignment.RIGHT)));
+		// }
+		//
+		//// try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		//// PdfWriter pdfWriter = new PdfWriter(outputStream);
+		//// PdfDocument pdfDocument = new PdfDocument(pdfWriter);
+		//// Document document = new Document(pdfDocument)) {
+		////
+		//// document.add(table);
+		//// document.add(singleColumnTable);
+		//// document.add(doubleColumnTable);
+		//// document.add(table1);
+		//// document.add(table2);
+		//// if (table3 != null) {
+		//// document.add(table3);
+		//// }
+		//// ByteArrayResource resource = new
+		// ByteArrayResource(outputStream.toByteArray());
+		//// String filename = jobCard.getJobId() + "_" + jobCard.getVehicleRegNo() +
+		// ".pdf";
+		//// HttpHeaders headers = new HttpHeaders();
+		//// headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" +
+		// filename);
+		//// return
+		// ResponseEntity.ok().headers(headers).contentLength(resource.contentLength())
+		//// .contentType(MediaType.APPLICATION_PDF).body(resource);
+		//// } catch (Exception e) {
+		//// throw new Exception(e);
+		//// }
+		//
+		// ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		// PdfWriter pdfWriter = new PdfWriter(outputStream);
+		// PdfDocument pdfDocument = new PdfDocument(pdfWriter);
+		// Document document = new Document(pdfDocument);
+		//
+		// document.add(table);
+		// document.add(singleColumnTable);
+		// document.add(doubleColumnTable);
+		// document.add(table1);
+		// document.add(table2);
+		// if (table3 != null) {
+		// document.add(table3);
+		// }
+		// document.close();
+		// pdfDocument.close();
+		// pdfWriter.close();
+		// outputStream.close();
+		//
+		// ByteArrayResource resource = new
+		// ByteArrayResource(outputStream.toByteArray());
+		// String filename = "JobCard_" + jobCard.getJobId() + "_" +
+		// jobCard.getVehicleRegNo() + ".pdf";
 		String filename = "";
 		ByteArrayResource resource = new ByteArrayResource(null);
 		HttpHeaders headers = new HttpHeaders();
@@ -889,44 +993,48 @@ public class JobCardService {
 				.contentType(MediaType.APPLICATION_PDF).body(resource);
 	}
 
-//	private Paragraph createCellWithFixedSpace(String... texts) {
-//		// TODO Auto-generated method stub
-//		String regex = "Job Card No: |Owner: |Address: |Contact No: |Driver: |Vehicle Reg. No: |Vehicle Model: |Technician Name: |Type of Vehicle: |K.M: |Vehicle Out Date: |Date: |Email: ";
-//		Paragraph paragraph = new Paragraph();
-//		for (String text : texts) {
-//			if (text.equals("\n")) {
-//				paragraph.add(text);
-//			} else if (text.matches(regex)) {
-//				paragraph.add(new Text(text).setBold());
-//			} else {
-//				paragraph.add(new Text(text).setTextAlignment(TextAlignment.RIGHT));
-//			}
-//
-//		}
-//		return paragraph;
-//
-//	}
-//
-//	private void setMinWidth(Table table, int rowIndex, int columnIndex, float minWidth) {
-//		if (rowIndex < table.getNumberOfRows() && columnIndex < table.getNumberOfColumns()) {
-//			table.getCell(rowIndex, columnIndex).setMinWidth(minWidth);
-//		}
-//	}
-//
-//	private void updateVechicleItems(Table table1, String items) {
-//		if (items != null) {
-//			if (items.equals("OK")) {
-//				table1.addCell("OK");
-//				table1.addCell("");
-//			} else {
-//				table1.addCell("");
-//				table1.addCell("NOT OK");
-//			}
-//		} else {
-//			table1.addCell("");
-//			table1.addCell("");
-//		}
-//	}
+	// private Paragraph createCellWithFixedSpace(String... texts) {
+	// // TODO Auto-generated method stub
+	// String regex = "Job Card No: |Owner: |Address: |Contact No: |Driver: |Vehicle
+	// Reg. No: |Vehicle Model: |Technician Name: |Type of Vehicle: |K.M: |Vehicle
+	// Out Date: |Date: |Email: ";
+	// Paragraph paragraph = new Paragraph();
+	// for (String text : texts) {
+	// if (text.equals("\n")) {
+	// paragraph.add(text);
+	// } else if (text.matches(regex)) {
+	// paragraph.add(new Text(text).setBold());
+	// } else {
+	// paragraph.add(new Text(text).setTextAlignment(TextAlignment.RIGHT));
+	// }
+	//
+	// }
+	// return paragraph;
+	//
+	// }
+	//
+	// private void setMinWidth(Table table, int rowIndex, int columnIndex, float
+	// minWidth) {
+	// if (rowIndex < table.getNumberOfRows() && columnIndex <
+	// table.getNumberOfColumns()) {
+	// table.getCell(rowIndex, columnIndex).setMinWidth(minWidth);
+	// }
+	// }
+	//
+	// private void updateVechicleItems(Table table1, String items) {
+	// if (items != null) {
+	// if (items.equals("OK")) {
+	// table1.addCell("OK");
+	// table1.addCell("");
+	// } else {
+	// table1.addCell("");
+	// table1.addCell("NOT OK");
+	// }
+	// } else {
+	// table1.addCell("");
+	// table1.addCell("");
+	// }
+	// }
 
 	private String stringNullCheck(Object str) {
 		if (str == null)
@@ -944,226 +1052,288 @@ public class JobCardService {
 	private String removeJobSparesBracketFieldsAndNullCheck(Object str) {
 		if (str == null)
 			return "";
-		return String.valueOf(str).replaceAll("\\s*\\(.*?\\)\\s*", "").trim();
+		return String.valueOf(str).replaceAll("\s*\(.*?\)\s*", "").trim();
 	}
 
 	private void sendNotifications(String title, String body) {
-//		EmailDetails emailDetails = EmailDetails.builder().msgBody(title).subject(title).build();
-//		emailService.sendTableMail(emailDetails, emailRecepients, body);
+		// EmailDetails emailDetails =
+		// EmailDetails.builder().msgBody(title).subject(title).build();
+		// emailService.sendTableMail(emailDetails, emailRecepients, body);
 
 	}
 
-//	public ResponseEntity<?> generateBillPdf(String id) throws Exception {
-//		JobCard jobCard = jobCardRepository.findById(id).orElse(null);
-//		JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
-//
-//		if (jobCard == null) {
-//			throw new Exception("JobCard not found for id " + id);
-//		}
-//
-//		if (jobSpares == null) {
-//			throw new Exception("JobSpares not found for id " + id);
-//		}
-//
-//		// Create PDF document and writer
-//		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-//		PdfWriter pdfWriter = new PdfWriter(outputStream);
-//		PdfDocument pdfDocument = new PdfDocument(pdfWriter);
-//		Document document = new Document(pdfDocument);
-//
-//		Table table = new Table(UnitValue.createPercentArray(new float[] { 70, 30 }));
-//		table.setWidth(UnitValue.createPercentValue(100));
-//
-//		Paragraph businessDetails = new Paragraph().add(new Text("JAI MARUTHI AUTO CARE\n").setBold().setFontSize(20))
-//				.add(new Text("#188-B, Mettukadai, Kathirampatti, Erode - 638 107\n").setFontSize(10))
-//				.add(new Text("E-mail: jmacerode@gmail.com | Cell: 63801 68789, 88256 06390").setFontSize(10));
-//
-//		// Add the business details Paragraph to the first cell of the table
-//		table.addCell(new Cell().add(businessDetails).setVerticalAlignment(VerticalAlignment.MIDDLE)
-//				.setHorizontalAlignment(HorizontalAlignment.LEFT));
-//
-//		Image image = new Image(ImageDataFactory.create("classpath:jm_logo_1.jpeg"));
-//		image.setMaxHeight(120);
-//		image.setMaxWidth(150);
-//		table.addCell(
-//				new Paragraph("").add(image).setVerticalAlignment(VerticalAlignment.MIDDLE).setKeepTogether(true));
-//		document.add(table);
-//
-//		// Header Section - Add business info
-//		Table headerTable = new Table(UnitValue.createPercentArray(new float[] { 100 }));
-//		headerTable.setWidth(UnitValue.createPercentValue(100));
-//
-//		headerTable.addCell(new Cell()
-//				.add(new Paragraph("INVOICE").setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER)));
-//		document.add(headerTable);
-//
-//		Table customerInfoTable = new Table(UnitValue.createPercentArray(new float[] { 40, 30, 30 }));
-//		customerInfoTable.setWidth(UnitValue.createPercentValue(100));
-//		customerInfoTable.addCell(new Cell().add(new Paragraph("Customer Name: " + jobCard.getOwnerName())
-//				.setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
-//		customerInfoTable.addCell(new Cell().add(new Paragraph("Ph No. " + jobCard.getOwnerPhoneNumber())
-//				.setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
-//
-//		customerInfoTable.addCell(new Cell().add(new Paragraph("Date: " + createDateString(LocalDateTime.now()))
-//				.setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
-//
-//		document.add(customerInfoTable);
-//
-//		// Add Invoice Info Section
-//		Table invoiceInfoTable = new Table(UnitValue.createPercentArray(new float[] { 18, 32, 25, 25 }));
-//		invoiceInfoTable.setWidth(UnitValue.createPercentValue(100));
-//		invoiceInfoTable.addCell(new Cell().add(new Paragraph("Invoice No: " + jobCard.getInvoiceId()).setFontSize(10)
-//				.setTextAlignment(TextAlignment.LEFT)));
-//		invoiceInfoTable.addCell(new Cell().add(new Paragraph("V. Name: " + jobCard.getVehicleName()).setFontSize(10)
-//				.setTextAlignment(TextAlignment.LEFT)));
-//		invoiceInfoTable.addCell(new Cell().add(new Paragraph("V. No: " + jobCard.getVehicleRegNo()).setFontSize(10)
-//				.setTextAlignment(TextAlignment.LEFT)));
-//		invoiceInfoTable.addCell(new Cell().add(new Paragraph("V. KMs: " + jobCard.getKiloMeters())).setFontSize(10)
-//				.setTextAlignment(TextAlignment.LEFT));
-//		document.add(invoiceInfoTable);
-//
-//		// Add Job No and Customer's Order Section
-//		Table orderInfoTable = new Table(UnitValue.createPercentArray(new float[] { 50, 50 }));
-//		orderInfoTable.setWidth(UnitValue.createPercentValue(100));
-//		orderInfoTable.addCell(new Cell()
-//				.add(new Paragraph("Customer’s Order No & Date: " + createDateString(jobCard.getJobCreationDate()))
-//						.setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
-//		orderInfoTable.addCell(new Cell().add(
-//				new Paragraph("Job No: " + jobCard.getJobId()).setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
-//
-//		document.add(orderInfoTable);
-//
-//		// Create table for Spares and Labour (with proper headers)
-//		Table itemTable = new Table(UnitValue.createPercentArray(new float[] { 10, 40, 10, 20, 20 }));
-//		itemTable.setWidth(UnitValue.createPercentValue(100));
-//		itemTable.addCell(new Cell().add(new Paragraph("S.No").setTextAlignment(TextAlignment.CENTER).setBold()));
-//		itemTable
-//				.addCell(new Cell().add(new Paragraph("Particulars").setTextAlignment(TextAlignment.CENTER).setBold()));
-//		itemTable.addCell(new Cell().add(new Paragraph("Qty").setTextAlignment(TextAlignment.CENTER).setBold()));
-//		itemTable.addCell(new Cell().add(new Paragraph("Rate/Unit").setTextAlignment(TextAlignment.CENTER).setBold()));
-//		itemTable.addCell(new Cell().add(new Paragraph("Amount").setTextAlignment(TextAlignment.CENTER).setBold()));
-//
-//		// Add Spares and Labor details
-//		int itemIndex = 1;
-//		if (jobSpares != null && jobSpares.getJobSparesInfo() != null) {
-//			for (JobSparesInfo sparesInfo : jobSpares.getJobSparesInfo()) {
-//				String units = sparesInfo.getUnits() != null ? sparesInfo.getUnits() : "";
-//
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(String.valueOf(itemIndex++)).setTextAlignment(TextAlignment.CENTER)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(removeJobSparesBracketFieldsAndNullCheck(sparesInfo.getSparesAndLabour()))));
-//				itemTable.addCell(new Cell().add(
-//						new Paragraph(sparesInfo.getQty().toString() + units).setTextAlignment(TextAlignment.RIGHT)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(sparesInfo.getRate().toString()).setTextAlignment(TextAlignment.RIGHT)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(sparesInfo.getAmount().toString()).setTextAlignment(TextAlignment.RIGHT)));
-//			}
-//		}
-//
-//		if (jobSpares != null && jobSpares.getJobConsumablesInfo() != null) {
-//			for (JobSparesInfo sparesInfo : jobSpares.getJobConsumablesInfo()) {
-//				String units = sparesInfo.getUnits() != null ? sparesInfo.getUnits() : "";
-//
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(String.valueOf(itemIndex++)).setTextAlignment(TextAlignment.CENTER)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(removeJobSparesBracketFieldsAndNullCheck(sparesInfo.getSparesAndLabour()))));
-//				itemTable.addCell(new Cell().add(
-//						new Paragraph("").setTextAlignment(TextAlignment.RIGHT)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph("").setTextAlignment(TextAlignment.RIGHT)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(sparesInfo.getAmount().toString()).setTextAlignment(TextAlignment.RIGHT)));
-//			}
-//		}
-//		
-//		if (jobSpares != null && jobSpares.getJobLaborInfo() != null) {
-//			for (JobSparesInfo sparesInfo : jobSpares.getJobLaborInfo()) {
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(String.valueOf(itemIndex++)).setTextAlignment(TextAlignment.CENTER)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(removeJobSparesBracketFieldsAndNullCheck(sparesInfo.getSparesAndLabour()))));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(sparesInfo.getQty().toString()).setTextAlignment(TextAlignment.RIGHT)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(sparesInfo.getRate().toString()).setTextAlignment(TextAlignment.RIGHT)));
-//				itemTable.addCell(new Cell()
-//						.add(new Paragraph(sparesInfo.getAmount().toString()).setTextAlignment(TextAlignment.RIGHT)));
-//			}
-//		}
-//
-//		document.add(itemTable);
-//
-//		// Add Total section for Spares, Labour, and Grand Total
-//		Table totalTable = new Table(UnitValue.createPercentArray(new float[] { 80, 20 }));
-//		totalTable.setWidth(UnitValue.createPercentValue(100));
-//		totalTable
-//				.addCell(new Cell().add(new Paragraph("Grand Total").setBold().setTextAlignment(TextAlignment.RIGHT)));
-//		totalTable.addCell(new Cell()
-//				.add(new Paragraph(stringNullCheck(jobSpares.getGrandTotal())).setTextAlignment(TextAlignment.RIGHT)));
-//		document.add(totalTable);
-//
-//		// Add Note Section
-//		Table noteTable = new Table(UnitValue.createPercentArray(new float[] { 100 }));
-//		noteTable.setWidth(UnitValue.createPercentValue(100));
-//		noteTable.addCell(new Cell().add(new Paragraph(
-//				"Note: Goods once sold cannot be taken back. Warranty of the Components are applicable only subjected to manufacturing defects. Not for improper (or) wear condition of the components.")
-//				.setFontSize(8).setTextAlignment(TextAlignment.LEFT)));
-//		document.add(noteTable);
-//
-//		Table table1 = new Table(UnitValue.createPercentArray(new float[] { 65, 35 }));
-//		table1.setWidth(UnitValue.createPercentValue(100));
-//
-//		Paragraph businessDetails1 = new Paragraph().add(new Text(
-//				"Received the above goods in good condition and we have agreed to the price and other terms shows above.\n")
-//				.setFontSize(8)) // Larger and bold font for the name
-//				.add(new Text("\n").setFontSize(10)) // Smaller font for address
-//				.add(new Text("Signature").setFontSize(10).setHorizontalAlignment(HorizontalAlignment.CENTER));
-//
-//		table1.addCell(new Cell().add(businessDetails1).setVerticalAlignment(VerticalAlignment.MIDDLE)
-//				.setHorizontalAlignment(HorizontalAlignment.LEFT));
-//
-//		Paragraph businessDetails2 = new Paragraph()
-//				.add(new Text("For JAI MARUTHI AUTO CARE\n").setBold().setFontSize(10)) // Larger and bold font for the
-//																						// name
-//				.add(new Text("\n").setFontSize(10)) // Smaller font for address
-//				.add(new Text("Authorized Signature").setFontSize(10)
-//						.setHorizontalAlignment(HorizontalAlignment.CENTER)); // Smaller font for email and phone
-//
-//		table1.addCell(new Cell().add(businessDetails2).setVerticalAlignment(VerticalAlignment.MIDDLE)
-//				.setHorizontalAlignment(HorizontalAlignment.LEFT));
-//
-//		document.add(table1);
-//
-//		// Close Document
-//		document.close();
-//		pdfDocument.close();
-//		pdfWriter.close();
-//		outputStream.close();
-//
-//		ByteArrayResource resource = new ByteArrayResource(outputStream.toByteArray());
-//		String filename = "Bill_" + jobCard.getJobId() + "_" + jobCard.getVehicleRegNo() + ".pdf";
-//		HttpHeaders headers = new HttpHeaders();
-//		headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
-//		return ResponseEntity.ok().headers(headers).contentLength(resource.contentLength())
-//				.contentType(MediaType.APPLICATION_PDF).body(resource);
-//	}
+	// public ResponseEntity<?> generateBillPdf(String id) throws Exception {
+	// JobCard jobCard = jobCardRepository.findById(id).orElse(null);
+	// JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
+	//
+	// if (jobCard == null) {
+	// throw new Exception("JobCard not found for id " + id);
+	// }
+	//
+	// if (jobSpares == null) {
+	// throw new Exception("JobSpares not found for id " + id);
+	// }
+	//
+	// // Create PDF document and writer
+	// ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+	// PdfWriter pdfWriter = new PdfWriter(outputStream);
+	// PdfDocument pdfDocument = new PdfDocument(pdfWriter);
+	// Document document = new Document(pdfDocument);
+	//
+	// Table table = new Table(UnitValue.createPercentArray(new float[] { 70, 30
+	// }));
+	// table.setWidth(UnitValue.createPercentValue(100));
+	//
+	// Paragraph businessDetails = new Paragraph().add(new Text("JAI MARUTHI AUTO
+	// CARE\n").setBold().setFontSize(20))
+	// .add(new Text("#188-B, Mettukadai, Kathirampatti, Erode - 638
+	// 107\n").setFontSize(10))
+	// .add(new Text("E-mail: jmacerode@gmail.com | Cell: 63801 68789, 88256
+	// 06390").setFontSize(10));
+	//
+	// // Add the business details Paragraph to the first cell of the table
+	// table.addCell(new
+	// Cell().add(businessDetails).setVerticalAlignment(VerticalAlignment.MIDDLE)
+	// .setHorizontalAlignment(HorizontalAlignment.LEFT));
+	//
+	// Image image = new Image(ImageDataFactory.create("classpath:jm_logo_1.jpeg"));
+	// image.setMaxHeight(120);
+	// image.setMaxWidth(150);
+	// table.addCell(
+	// new
+	// Paragraph("").add(image).setVerticalAlignment(VerticalAlignment.MIDDLE).setKeepTogether(true));
+	// document.add(table);
+	//
+	// // Header Section - Add business info
+	// Table headerTable = new Table(UnitValue.createPercentArray(new float[] { 100
+	// }));
+	// headerTable.setWidth(UnitValue.createPercentValue(100));
+	//
+	// headerTable.addCell(new Cell()
+	// .add(new
+	// Paragraph("INVOICE").setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER)));
+	// document.add(headerTable);
+	//
+	// Table customerInfoTable = new Table(UnitValue.createPercentArray(new float[]
+	// { 40, 30, 30 }));
+	// customerInfoTable.setWidth(UnitValue.createPercentValue(100));
+	// customerInfoTable.addCell(new Cell().add(new Paragraph("Customer Name: " +
+	// jobCard.getOwnerName())
+	// .setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
+	// customerInfoTable.addCell(new Cell().add(new Paragraph("Ph No. " +
+	// jobCard.getOwnerPhoneNumber())
+	// .setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
+	//
+	// customerInfoTable.addCell(new Cell().add(new Paragraph("Date: " +
+	// createDateString(LocalDateTime.now()))
+	// .setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
+	//
+	// document.add(customerInfoTable);
+	//
+	// // Add Invoice Info Section
+	// Table invoiceInfoTable = new Table(UnitValue.createPercentArray(new float[] {
+	// 18, 32, 25, 25 }));
+	// invoiceInfoTable.setWidth(UnitValue.createPercentValue(100));
+	// invoiceInfoTable.addCell(new Cell().add(new Paragraph("Invoice No: " +
+	// jobCard.getInvoiceId()).setFontSize(10)
+	// .setTextAlignment(TextAlignment.LEFT)));
+	// invoiceInfoTable.addCell(new Cell().add(new Paragraph("V. Name: " +
+	// jobCard.getVehicleName()).setFontSize(10)
+	// .setTextAlignment(TextAlignment.LEFT)));
+	// invoiceInfoTable.addCell(new Cell().add(new Paragraph("V. No: " +
+	// jobCard.getVehicleRegNo()).setFontSize(10)
+	// .setTextAlignment(TextAlignment.LEFT)));
+	// invoiceInfoTable.addCell(new Cell().add(new Paragraph("V. KMs: " +
+	// jobCard.getKiloMeters())).setFontSize(10)
+	// .setTextAlignment(TextAlignment.LEFT));
+	// document.add(invoiceInfoTable);
+	//
+	// // Add Job No and Customer's Order Section
+	// Table orderInfoTable = new Table(UnitValue.createPercentArray(new float[] {
+	// 50, 50 }));
+	// orderInfoTable.setWidth(UnitValue.createPercentValue(100));
+	// orderInfoTable.addCell(new Cell()
+	// .add(new Paragraph("Customer’s Order No & Date: " +
+	// createDateString(jobCard.getJobCreationDate()))
+	// .setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
+	// orderInfoTable.addCell(new Cell().add(
+	// new Paragraph("Job No: " +
+	// jobCard.getJobId()).setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
+	//
+	// document.add(orderInfoTable);
+	//
+	// // Create table for Spares and Labour (with proper headers)
+	// Table itemTable = new Table(UnitValue.createPercentArray(new float[] { 10,
+	// 40, 10, 20, 20 }));
+	// itemTable.setWidth(UnitValue.createPercentValue(100));
+	// itemTable.addCell(new Cell().add(new
+	// Paragraph("S.No").setTextAlignment(TextAlignment.CENTER).setBold()));
+	// itemTable
+	// .addCell(new Cell().add(new
+	// Paragraph("Particulars").setTextAlignment(TextAlignment.CENTER).setBold()));
+	// itemTable.addCell(new Cell().add(new
+	// Paragraph("Qty").setTextAlignment(TextAlignment.CENTER).setBold()));
+	// itemTable.addCell(new Cell().add(new
+	// Paragraph("Rate/Unit").setTextAlignment(TextAlignment.CENTER).setBold()));
+	// itemTable.addCell(new Cell().add(new
+	// Paragraph("Amount").setTextAlignment(TextAlignment.CENTER).setBold()));
+	//
+	// // Add Spares and Labor details
+	// int itemIndex = 1;
+	// if (jobSpares != null && jobSpares.getJobSparesInfo() != null) {
+	// for (JobSparesInfo sparesInfo : jobSpares.getJobSparesInfo()) {
+	// String units = sparesInfo.getUnits() != null ? sparesInfo.getUnits() : "";
+	//
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(String.valueOf(itemIndex++)).setTextAlignment(TextAlignment.CENTER)));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(removeJobSparesBracketFieldsAndNullCheck(sparesInfo.getSparesAndLabour()))));
+	// itemTable.addCell(new Cell().add(
+	// new Paragraph(sparesInfo.getQty().toString() +
+	// units).setTextAlignment(TextAlignment.RIGHT)));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(sparesInfo.getRate().toString()).setTextAlignment(TextAlignment.RIGHT)));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(sparesInfo.getAmount().toString()).setTextAlignment(TextAlignment.RIGHT)));
+	// }
+	// }
+	//
+	// if (jobSpares != null && jobSpares.getJobConsumablesInfo() != null) {
+	// for (JobSparesInfo sparesInfo : jobSpares.getJobConsumablesInfo()) {
+	// String units = sparesInfo.getUnits() != null ? sparesInfo.getUnits() : "";
+	//
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(String.valueOf(itemIndex++)).setTextAlignment(TextAlignment.CENTER)));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(removeJobSparesBracketFieldsAndNullCheck(sparesInfo.getSparesAndLabour()))));
+	// itemTable.addCell(new Cell().add(
+	// new Paragraph("").setTextAlignment(TextAlignment.RIGHT)));
+	// itemTable.addCell(new Cell()
+	// .add(new Paragraph("").setTextAlignment(TextAlignment.RIGHT)));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(sparesInfo.getAmount().toString()).setTextAlignment(TextAlignment.RIGHT)));
+	// }
+	// }
+	//
+	// if (jobSpares != null && jobSpares.getJobLaborInfo() != null) {
+	// for (JobSparesInfo sparesInfo : jobSpares.getJobLaborInfo()) {
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(String.valueOf(itemIndex++)).setTextAlignment(TextAlignment.CENTER)));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(removeJobSparesBracketFieldsAndNullCheck(sparesInfo.getSparesAndLabour()))));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(sparesInfo.getQty().toString()).setTextAlignment(TextAlignment.RIGHT)));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(sparesInfo.getRate().toString()).setTextAlignment(TextAlignment.RIGHT)));
+	// itemTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(sparesInfo.getAmount().toString()).setTextAlignment(TextAlignment.RIGHT)));
+	// }
+	// }
+	//
+	// document.add(itemTable);
+	//
+	// // Add Total section for Spares, Labour, and Grand Total
+	// Table totalTable = new Table(UnitValue.createPercentArray(new float[] { 80,
+	// 20 }));
+	// totalTable.setWidth(UnitValue.createPercentValue(100));
+	// totalTable
+	// .addCell(new Cell().add(new Paragraph("Grand
+	// Total").setBold().setTextAlignment(TextAlignment.RIGHT)));
+	// totalTable.addCell(new Cell()
+	// .add(new
+	// Paragraph(stringNullCheck(jobSpares.getGrandTotal())).setTextAlignment(TextAlignment.RIGHT)));
+	// document.add(totalTable);
+	//
+	// // Add Note Section
+	// Table noteTable = new Table(UnitValue.createPercentArray(new float[] { 100
+	// }));
+	// noteTable.setWidth(UnitValue.createPercentValue(100));
+	// noteTable.addCell(new Cell().add(new Paragraph(
+	// "Note: Goods once sold cannot be taken back. Warranty of the Components are
+	// applicable only subjected to manufacturing defects. Not for improper (or)
+	// wear condition of the components.")
+	// .setFontSize(8).setTextAlignment(TextAlignment.LEFT)));
+	// document.add(noteTable);
+	//
+	// Table table1 = new Table(UnitValue.createPercentArray(new float[] { 65, 35
+	// }));
+	// table1.setWidth(UnitValue.createPercentValue(100));
+	//
+	// Paragraph businessDetails1 = new Paragraph().add(new Text(
+	// "Received the above goods in good condition and we have agreed to the price
+	// and other terms shows above.\n")
+	// .setFontSize(8)) // Larger and bold font for the name
+	// .add(new Text("\n").setFontSize(10)) // Smaller font for address
+	// .add(new
+	// Text("Signature").setFontSize(10).setHorizontalAlignment(HorizontalAlignment.CENTER));
+	//
+	// table1.addCell(new
+	// Cell().add(businessDetails1).setVerticalAlignment(VerticalAlignment.MIDDLE)
+	// .setHorizontalAlignment(HorizontalAlignment.LEFT));
+	//
+	// Paragraph businessDetails2 = new Paragraph()
+	// .add(new Text("For JAI MARUTHI AUTO CARE\n").setBold().setFontSize(10)) //
+	// Larger and bold font for the
+	// // name
+	// .add(new Text("\n").setFontSize(10)) // Smaller font for address
+	// .add(new Text("Authorized Signature").setFontSize(10)
+	// .setHorizontalAlignment(HorizontalAlignment.CENTER)); // Smaller font for
+	// email and phone
+	//
+	// table1.addCell(new
+	// Cell().add(businessDetails2).setVerticalAlignment(VerticalAlignment.MIDDLE)
+	// .setHorizontalAlignment(HorizontalAlignment.LEFT));
+	//
+	// document.add(table1);
+	//
+	// // Close Document
+	// document.close();
+	// pdfDocument.close();
+	// pdfWriter.close();
+	// outputStream.close();
+	//
+	// ByteArrayResource resource = new
+	// ByteArrayResource(outputStream.toByteArray());
+	// String filename = "Bill_" + jobCard.getJobId() + "_" +
+	// jobCard.getVehicleRegNo() + ".pdf";
+	// HttpHeaders headers = new HttpHeaders();
+	// headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" +
+	// filename);
+	// return
+	// ResponseEntity.ok().headers(headers).contentLength(resource.contentLength())
+	// .contentType(MediaType.APPLICATION_PDF).body(resource);
+	// }
 
-//	void addEmptyRow(Table table) {
-//
-//		table.addCell(new Cell().setMinHeight(rowHeight)
-//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.CENTER)));
-//		table.addCell(new Cell().setMinHeight(rowHeight)
-//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
-//		table.addCell(new Cell().setMinHeight(rowHeight)
-//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
-//		table.addCell(new Cell().setMinHeight(rowHeight)
-//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
-//		table.addCell(new Cell().setMinHeight(rowHeight)
-//				.add(new Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
-//	}
+	// void addEmptyRow(Table table) {
+	//
+	// table.addCell(new Cell().setMinHeight(rowHeight)
+	// .add(new
+	// Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.CENTER)));
+	// table.addCell(new Cell().setMinHeight(rowHeight)
+	// .add(new
+	// Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.LEFT)));
+	// table.addCell(new Cell().setMinHeight(rowHeight)
+	// .add(new
+	// Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
+	// table.addCell(new Cell().setMinHeight(rowHeight)
+	// .add(new
+	// Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
+	// table.addCell(new Cell().setMinHeight(rowHeight)
+	// .add(new
+	// Paragraph("").setFontSize(10).setTextAlignment(TextAlignment.RIGHT)));
+	// }
 
 	public JobVehiclePhotos saveZipToMongo(MultipartFile zipFile, String id) throws IOException {
 
@@ -1197,19 +1367,19 @@ public class JobCardService {
 		}
 
 		String paymentMode = "";
-//		for (PaymentSplit payment : invoice.getPaymentSplitList()) {
-//			if (!payment.getPaymentMode().equals("CREDIT")) {
-//				paymentMode = paymentMode + payment.getPaymentMode() + " ";
-//			}
-//		}
+		// for (PaymentSplit payment : invoice.getPaymentSplitList()) {
+		// if (!payment.getPaymentMode().equals("CREDIT")) {
+		// paymentMode = paymentMode + payment.getPaymentMode() + " ";
+		// }
+		// }
 		paymentMode = invoice.getPaymentSplitList().stream()
 				.filter(payment -> !payment.getPaymentMode().equals("CREDIT")).map(s -> s.getPaymentMode())
 				.collect(Collectors.joining(", "));
 		// NEED to work whether to consider CREDIT list also. Also consider unique
 		// value. May be use Set<String>
-//		if (paymentMode.equals("")) {
-//			paymentMode = invoice.getCreditPaymentList().get(0).getPaymentMode();
-//		}
+		// if (paymentMode.equals("")) {
+		// paymentMode = invoice.getCreditPaymentList().get(0).getPaymentMode();
+		// }
 		if (paymentMode.equals("")) {
 			paymentMode = invoice.getCreditPaymentList().stream()
 					.filter(payment -> !payment.getPaymentMode().equals("CREDIT")).map(s -> s.getPaymentMode())
@@ -1325,19 +1495,19 @@ public class JobCardService {
 		}
 
 		String paymentMode = "";
-//		for (PaymentSplit payment : estimate.getPaymentSplitList()) {
-//			if (!payment.getPaymentMode().equals("CREDIT")) {
-//				paymentMode = paymentMode + payment.getPaymentMode() + " ";
-//			}
-//		}
+		// for (PaymentSplit payment : estimate.getPaymentSplitList()) {
+		// if (!payment.getPaymentMode().equals("CREDIT")) {
+		// paymentMode = paymentMode + payment.getPaymentMode() + " ";
+		// }
+		// }
 		paymentMode = estimate.getPaymentSplitList().stream()
 				.filter(payment -> !payment.getPaymentMode().equals("CREDIT")).map(s -> s.getPaymentMode())
 				.collect(Collectors.joining(", "));
 		// NEED to work whether to consider CREDIT list also. Also consider unique
 		// value. May be use Set<String>
-//		if (paymentMode.equals("")) {
-//			paymentMode = estimate.getCreditPaymentList().get(0).getPaymentMode();
-//		}
+		// if (paymentMode.equals("")) {
+		// paymentMode = estimate.getCreditPaymentList().get(0).getPaymentMode();
+		// }
 		if (paymentMode.equals("")) {
 			paymentMode = estimate.getCreditPaymentList().stream()
 					.filter(payment -> !payment.getPaymentMode().equals("CREDIT")).map(s -> s.getPaymentMode())
@@ -1358,7 +1528,6 @@ public class JobCardService {
 		data.put("netAmount", estimate.getGrandTotal());
 		data.put("amountInWords", NumberToWordsConverter.convert(estimate.getGrandTotal()));
 
-		Map<BigDecimal, BigDecimal> taxMap = new HashMap<>();
 		int count = 1;
 		BigDecimal totalQty = BigDecimal.ZERO;
 
@@ -1657,6 +1826,30 @@ public class JobCardService {
 
 		// Save back the updated invoice (pseudo code - use repo)
 		invoiceRepository.save(invoice);
+	}
+
+	public JobCard createFastJobCard(FastJobCardRecord fastJobCard) throws Exception {
+		JobCard jobCard = JobCard.builder()
+				.ownerName(fastJobCard.ownerName())
+				.ownerAddress(fastJobCard.ownerAddress())
+				.ownerPhoneNumber(fastJobCard.ownerPhoneNumber())
+				.vehicleName(fastJobCard.vehicleName())
+				.vehicleRegNo(fastJobCard.vehicleRegNo())
+				.kiloMeters(fastJobCard.kiloMeters())
+				.jobStatus("OPEN")
+				.build();
+		jobCard = save(jobCard);
+
+		JobSpares jobSpares = JobSpares.builder()
+				.id(jobCard.getId())
+				.jobId(jobCard.getJobId())
+				.jobServiceInfo(fastJobCard.jobServiceInfo())
+				.jobSparesInfo(fastJobCard.jobSparesInfo())
+				.build();
+
+		updateJobSpares(jobSpares);
+
+		return jobCard;
 	}
 
 }
