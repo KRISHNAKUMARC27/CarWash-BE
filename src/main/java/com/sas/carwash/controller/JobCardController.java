@@ -1,6 +1,7 @@
 package com.sas.carwash.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -134,5 +135,10 @@ public class JobCardController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("Error uploading photos: " + e.getMessage());
 		}
+	}
+
+	@GetMapping("/getPhotoUrl/{id}")
+	public Map<String, String> getPhotoUrl(@PathVariable String id) {
+		return jobCardService.getPhotoUrl(id);
 	}
 }

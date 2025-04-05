@@ -2,6 +2,8 @@ package com.sas.carwash.service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -1850,6 +1852,21 @@ public class JobCardService {
 		updateJobSpares(jobSpares);
 
 		return jobCard;
+	}
+
+    public Map<String, String> getPhotoUrl(String id) {
+		Map<String, String> result = new HashMap<>();
+		try {
+			// Get the local host address
+			String ipAddress = InetAddress.getLocalHost().getHostAddress();
+			// Construct the URL
+			String url = "https://" + "rhineconstruction.in" + ":8444/jobCard/getPhotos/" + id;
+			result.put("url", url);
+		} catch (UnknownHostException e) {
+			// Handle the exception if the IP address cannot be determined
+			throw new RuntimeException("Unable to determine the host IP address", e);
+		}
+		return result;
 	}
 
 }

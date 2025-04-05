@@ -41,7 +41,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.GET, "/", "/index.html", "/static/**", "/**/*.js", "/**/*.css",
 								"/**/*.ico", "/**/*.png", "/**/*.jpg", "/**/*.jpeg", "/employee/**")
-						.permitAll().requestMatchers("/auth/**", "/user/signup/**", "/jobCard/getPhotos/**").permitAll()
+						.permitAll().requestMatchers("/auth/**", "/user/signup/**", "/jobCard/getPhotos/**","/jobCard/getPhotoUrl/**").permitAll()
 						.requestMatchers("/admin/**").hasRole("ADMIN").anyRequest().authenticated()
 
 				).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // Add JWT
