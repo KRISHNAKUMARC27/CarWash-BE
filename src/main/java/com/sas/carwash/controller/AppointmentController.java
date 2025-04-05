@@ -1,6 +1,8 @@
 package com.sas.carwash.controller;
 
 import java.util.List;
+import java.util.Date;
+import java.util.Calendar;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,5 +36,16 @@ public class AppointmentController {
 	@GetMapping("/{id}")
 	public Appointment getAppointmentById(@PathVariable String id) {
 		return appointmentService.getAppointmentById(id);
+	}
+
+	@GetMapping("/upcoming")
+	public List<Appointment> getUpcomingAppointments() {
+		Calendar calendar = Calendar.getInstance();
+		Date today = calendar.getTime();
+		
+		calendar.add(Calendar.DAY_OF_YEAR, 7);
+		Date nextWeek = calendar.getTime();
+		
+		return appointmentService.getAppointmentsBetweenDates(today, nextWeek);
 	}
 }
