@@ -1051,11 +1051,11 @@ public class JobCardService {
 		return "";
 	}
 
-	private String removeJobSparesBracketFieldsAndNullCheck(Object str) {
-		if (str == null)
-			return "";
-		return String.valueOf(str).replaceAll("\s*\(.*?\)\s*", "").trim();
-	}
+//	private String removeJobSparesBracketFieldsAndNullCheck(Object str) {
+//		if (str == null)
+//			return "";
+//		return String.valueOf(str).replaceAll("\s*\(.*?\)\s*", "").trim();
+//	}
 
 	private void sendNotifications(String title, String body) {
 		// EmailDetails emailDetails =

@@ -67,6 +67,10 @@ public class EstimateService {
 			estimate.setEstimateId(jobCardService.getNextSequenceForNewSequence("estimateId"));
 			estimate.setBillCloseDate(LocalDateTime.now());
 		}
+		estimate.getPaymentSplitList().stream().forEach(split -> {
+			if (split.getPaymentDate() == null)
+				split.setPaymentDate(LocalDateTime.now());
+		});
 		estimate.getCreditPaymentList().stream().forEach(credit -> {
 			if (credit.getCreditDate() == null)
 				credit.setCreditDate(LocalDateTime.now());

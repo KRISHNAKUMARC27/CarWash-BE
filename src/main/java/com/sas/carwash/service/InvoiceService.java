@@ -67,6 +67,10 @@ public class InvoiceService {
 			invoice.setInvoiceId(jobCardService.getNextSequenceForNewSequence("invoiceId"));
 			invoice.setBillCloseDate(LocalDateTime.now());
 		}
+		invoice.getPaymentSplitList().stream().forEach(split -> {
+			if (split.getPaymentDate() == null)
+				split.setPaymentDate(LocalDateTime.now());
+		});
 		invoice.getCreditPaymentList().stream().forEach(credit -> {
 			if (credit.getCreditDate() == null)
 				credit.setCreditDate(LocalDateTime.now());
