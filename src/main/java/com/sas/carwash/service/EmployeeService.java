@@ -139,7 +139,7 @@ public class EmployeeService {
 				throw new Exception("Leave already recorded for the employee");
 			} else {
 				if (record.reason() != null) {
-					//TODO .. check if employee can take leave after IN time.
+					// TODO .. check if employee can take leave after IN time.
 					throw new Exception("Attendance already recorded for the employee");
 				}
 			}
@@ -171,6 +171,39 @@ public class EmployeeService {
 					.setWorkingHours(calculateWorkingHours(attendance.getCheckInTime(), attendance.getCheckOutTime()));
 		} else {
 			throw new Exception("Invalid attendance status");
+		}
+
+		return attendanceRepository.save(attendance);
+	}
+
+	public Attendance updateAttendanceRecord(Attendance attendance) {
+		if (attendance.getLeaveType() != null) {
+			// Handle leave case
+			Leave leave = Leave.builder()
+					.date(attendance.getDate())
+					.employeeId(attendance.getEmployeeId())
+					.employeeName(attendance.getEmployeeName())
+					.leaveType(attendance.getLeaveType())
+					.build();
+			leaveRepository.save(leave);
+			attendance.setOnLeave(true);
+			attendance.setPresent(false);
+			attendance.setCheckInTime(null);
+			attendance.setCheckOutTime(null);
+			attendance.setWorkingHours(0);
+		} else {
+			// Handle case where leave is cancelled and in/out times are provided
+			attendance.setOnLeave(false);
+			attendance.setPresent(true);
+
+			// Delete the existing leave record if any
+			leaveRepository.deleteByEmployeeIdAndDate(attendance.getEmployeeId(), attendance.getDate());
+
+			// Optional: calculate working hours if both times are provided
+			if (attendance.getCheckInTime() != null && attendance.getCheckOutTime() != null) {
+				long hours = Duration.between(attendance.getCheckInTime(), attendance.getCheckOutTime()).toHours();
+				attendance.setWorkingHours((int) hours);
+			}
 		}
 
 		return attendanceRepository.save(attendance);
@@ -227,21 +260,21 @@ public class EmployeeService {
 	}
 
 	private Map<String, Object> processAttendance(List<Attendance> records) {
-        Map<String, Object> result = new HashMap<>();
+		Map<String, Object> result = new HashMap<>();
 
-        long presentCount = records.stream().filter(Attendance::getPresent).count();
-        long absentCount = records.size() - presentCount;
+		long presentCount = records.stream().filter(Attendance::getPresent).count();
+		long absentCount = records.size() - presentCount;
 
-        Map<String, Integer> workingHoursPerEmployee = records.stream()
-                .collect(Collectors.groupingBy(Attendance::getEmployeeName,
-                        Collectors.summingInt(att -> Optional.ofNullable(att.getWorkingHours()).orElse(0))));
+		Map<String, Integer> workingHoursPerEmployee = records.stream()
+				.collect(Collectors.groupingBy(Attendance::getEmployeeName,
+						Collectors.summingInt(att -> Optional.ofNullable(att.getWorkingHours()).orElse(0))));
 
-        result.put("totalPresent", presentCount);
-        result.put("totalAbsent", absentCount);
-        result.put("workingHours", workingHoursPerEmployee);
+		result.put("totalPresent", presentCount);
+		result.put("totalAbsent", absentCount);
+		result.put("workingHours", workingHoursPerEmployee);
 
-        return result;
-    }
+		return result;
+	}
 
 	public Map<String, Object> getDailyLeave(LocalDate date) {
 		List<Leave> records = leaveRepository.findByDate(date);
@@ -504,7 +537,8 @@ public class EmployeeService {
 
 	public Map<String, Object> getDayWiseWeeklyAttendance(int year, int week) {
 		List<Attendance> records = attendanceRepository.findAll().stream()
-				.filter(att -> att.getDate().getYear() == year && att.getDate().get(WeekFields.ISO.weekOfYear()) == week)
+				.filter(att -> att.getDate().getYear() == year
+						&& att.getDate().get(WeekFields.ISO.weekOfYear()) == week)
 				.collect(Collectors.toList());
 		return dayWiseProcessAttendance(records);
 	}

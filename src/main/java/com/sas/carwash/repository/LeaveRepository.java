@@ -11,6 +11,6 @@ public interface LeaveRepository extends MongoRepository<Leave, String> {
 	List<Leave> findByDate(LocalDate date);
 	List<Leave> findAllByOrderByIdDesc();
 	List<Leave> findByEmployeeIdAndDateBetween(String employeeId, LocalDate startDate, LocalDate endDate);
-
+    void deleteByEmployeeIdAndDate(String employeeId, LocalDate date);
 
 }

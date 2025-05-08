@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.sas.carwash.entity.Attendance;
 import com.sas.carwash.entity.Department;
 import com.sas.carwash.entity.Employee;
 import com.sas.carwash.entity.EmployeeSalary;
@@ -81,6 +82,16 @@ public class EmployeeController {
 	public ResponseEntity<?> saveAttendance(@RequestBody AttendanceRecord attendance) {
 		try {
 			return ResponseEntity.ok().body(employeeService.saveAttendanceRecord(attendance));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
+
+	@PutMapping("/attendance")
+	public ResponseEntity<?> updateAttendance(@RequestBody Attendance attendance) {
+		try {
+			return ResponseEntity.ok().body(employeeService.updateAttendanceRecord(attendance));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return ResponseEntity.badRequest().body(e.getMessage());

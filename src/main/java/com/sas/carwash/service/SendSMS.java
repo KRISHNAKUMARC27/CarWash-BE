@@ -5,8 +5,8 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.context.event.EventListener;
+// import org.springframework.context.event.ContextRefreshedEvent;
+// import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 @Service
