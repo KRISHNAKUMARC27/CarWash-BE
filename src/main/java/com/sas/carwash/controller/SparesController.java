@@ -34,8 +34,13 @@ public class SparesController {
 	}
 
 	@PostMapping
-	public SparesInventory save(@RequestBody SparesInventory spares) {
-		return sparesService.save(spares);
+	public ResponseEntity<?> save(@RequestBody SparesInventory spares) {
+		try {
+			return ResponseEntity.ok().body(sparesService.save(spares));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
 	}
 
 	@PostMapping("/findSparesInventoryWithFilter")

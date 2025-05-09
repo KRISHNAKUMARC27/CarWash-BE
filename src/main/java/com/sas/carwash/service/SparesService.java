@@ -46,7 +46,7 @@ public class SparesService {
 		sparesInventoryRepository.save(spares);
 	}
 
-	public synchronized SparesInventory save(SparesInventory spares) {
+	public synchronized SparesInventory save(SparesInventory spares) throws Exception  {
 		LocalDateTime currentTime = LocalDateTime.now();
 		spares.setUpdateDate(currentTime);
 		if (spares.getMinThresh().compareTo(spares.getQty()) > 0) {
@@ -63,6 +63,13 @@ public class SparesService {
 			SparesInventory oldSpares = sparesInventoryRepository.findById(spares.getId()).orElse(null);
 			if (oldSpares != null && !oldSpares.getCategory().equals(spares.getCategory())) {
 				oldSparesCategory = oldSpares.getCategory();
+			}
+		} else {
+
+			SparesInventory existingServiceInventory = sparesInventoryRepository
+					.findByDescAndCategory(spares.getDesc(), spares.getCategory());
+			if (existingServiceInventory != null) {
+				throw new Exception("Spares Name " + spares.getDesc() + " already exists for the category");
 			}
 		}
 
