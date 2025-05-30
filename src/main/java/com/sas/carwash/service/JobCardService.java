@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -71,6 +72,9 @@ public class JobCardService {
 	private final EstimateRepository estimateRepository;
 	private final MongoTemplate mongoTemplate;
 	private final PdfUtils pdfUtils;
+
+	@Value("${server.port}")
+    private String serverPort;
 
 	private String[] emailRecepients = { "krishnakumarc27@gmail.com" };
 
@@ -1859,7 +1863,7 @@ public class JobCardService {
 			// Get the local host address
 			String ipAddress = InetAddress.getLocalHost().getHostAddress();
 			// Construct the URL
-			String url = "https://" + "rhineconstruction.in" + ":8444/jobCard/getPhotos/" + id;
+            String url = "https://" + "rhineconstruction.in" + ":" + serverPort + "/jobCard/getPhotos/" + id;
 			result.put("url", url);
 		} catch (UnknownHostException e) {
 			// Handle the exception if the IP address cannot be determined

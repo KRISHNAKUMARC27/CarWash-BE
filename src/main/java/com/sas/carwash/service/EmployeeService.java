@@ -222,6 +222,10 @@ public class EmployeeService {
 		return attendanceRepository.findAllByOrderByIdDesc();
 	}
 
+	public List<?> findAllAttendaceToday() {
+		return attendanceRepository.findByDate(LocalDate.now());
+	}
+
 	public Map<String, Object> getDailyAttendance(LocalDate date) {
 		List<Attendance> records = attendanceRepository.findByDate(date);
 

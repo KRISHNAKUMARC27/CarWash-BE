@@ -103,6 +103,11 @@ public class EmployeeController {
 		return employeeService.findAllAttendace();
 	}
 
+	@GetMapping("/attendance/today")
+	public List<?> findAllAttendaceToday() {
+		return employeeService.findAllAttendaceToday();
+	}
+
 	@GetMapping("/attendance/daily/{date}")
 	public Map<String, Object> getDailyAttendance(@PathVariable String date) {
 		return employeeService.getDailyAttendance(LocalDate.parse(date));

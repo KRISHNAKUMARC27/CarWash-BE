@@ -74,6 +74,7 @@ F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\Employee.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\ExternalWorkCategoryRepository.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\config\JwtAuthenticationFilter.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\service\JobCardService.java
+F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\model\FastJobCardRecord.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\controller\JobCardController.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\User.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\ExternalWorkInventoryFilterImpl.java

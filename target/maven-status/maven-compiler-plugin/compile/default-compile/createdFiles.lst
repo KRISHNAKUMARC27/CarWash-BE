@@ -146,3 +146,4 @@ com\sas\carwash\controller\ConfigController.class
 com\sas\carwash\controller\StatsController.class
 com\sas\carwash\entity\Leave$LeaveBuilder.class
 com\sas\carwash\controller\AppointmentController.class
+com\sas\carwash\model\FastJobCardRecord.class
