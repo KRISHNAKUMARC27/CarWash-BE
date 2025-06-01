@@ -22,8 +22,10 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 import com.sas.carwash.entity.Invoice;
 import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
+import com.sas.carwash.entity.Payments;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
+import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.InvoiceRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ public class InvoiceService {
 	private final InvoiceRepository invoiceRepository;
 	private final JobCardService jobCardService;
     private final SpringTemplateEngine templateEngine;
+	private final PaymentsService paymentsService;
     
 	public List<?> findAll() throws Exception {
 		//invoiceData();
@@ -44,7 +47,7 @@ public class InvoiceService {
 	}
 
 	public Invoice findById(String id) throws Exception {
-		return invoiceRepository.findById(id).orElseThrow(() -> new RuntimeException("Invoice ID not found"));
+		return invoiceRepository.findById(id).orElseThrow(() -> new RuntimeException("Invoice ID not found " + id));
 	}
 
 	public List<Invoice> findByCreditFlag() {
@@ -67,14 +70,78 @@ public class InvoiceService {
 			invoice.setInvoiceId(jobCardService.getNextSequenceForNewSequence("invoiceId"));
 			invoice.setBillCloseDate(LocalDateTime.now());
 		}
-		invoice.getPaymentSplitList().stream().forEach(split -> {
+
+		for (PaymentSplit split : invoice.getPaymentSplitList()) {
+
 			if (split.getPaymentDate() == null)
 				split.setPaymentDate(LocalDateTime.now());
-		});
-		invoice.getCreditPaymentList().stream().forEach(credit -> {
+
+			if (!"CREDIT".equals(split.getPaymentMode())) {
+				if ("ADD".equals(split.getFlag())) {
+					Payments payments = Payments.builder()
+							.paymentAmount(split.getPaymentAmount())
+							.paymentDate(split.getPaymentDate())
+							.paymentMode(split.getPaymentMode())
+							.category("INVOICE")
+							.categoryFieldId(invoice.getInvoiceId())
+							.isCreditPayment(false)
+							.build();
+					payments = paymentsService.save(payments);
+					split.setPaymentId(payments.getId());
+				} else if ("MODIFY".equals(split.getFlag())) {
+					Payments payments = paymentsService.findById(split.getPaymentId());
+					payments.setPaymentAmount(split.getPaymentAmount());
+					payments.setPaymentMode(split.getPaymentMode());
+					paymentsService.save(payments);
+				} else if ("DELETE".equals(split.getFlag())) {
+					paymentsService.deleteById(split.getPaymentId());
+				}
+			}
+
+		}
+
+		for (CreditPayment credit : invoice.getCreditPaymentList()) {
+
 			if (credit.getCreditDate() == null)
 				credit.setCreditDate(LocalDateTime.now());
-		});
+
+			if ("ADD".equals(credit.getFlag())) {
+				Payments payments = Payments.builder()
+						.paymentAmount(credit.getAmount())
+						.paymentDate(credit.getCreditDate())
+						.paymentMode(credit.getPaymentMode())
+						.category("INVOICE")
+						.categoryFieldId(invoice.getInvoiceId())
+						.isCreditPayment(true)
+						.build();
+				payments = paymentsService.save(payments);
+				credit.setPaymentId(payments.getId());
+			} else if ("MODIFY".equals(credit.getFlag())) {
+				Payments payments = paymentsService.findById(credit.getPaymentId());
+				payments.setPaymentAmount(credit.getAmount());
+				payments.setPaymentMode(credit.getPaymentMode());
+				paymentsService.save(payments);
+			} else if ("DELETE".equals(credit.getFlag())) {
+				paymentsService.deleteById(credit.getPaymentId());
+			}
+		}
+
+		// **Filter out the paymentssplit marked for DELETE** before saving
+		List<PaymentSplit> filteredPaymentSplitList = invoice.getPaymentSplitList().stream()
+				.filter(split -> !"DELETE".equals(split.getFlag())).collect(Collectors.toList());
+
+		// Update the paymentssplit list and set action to null
+		filteredPaymentSplitList.forEach(split -> split.setFlag(null));
+		invoice.setPaymentSplitList(filteredPaymentSplitList);
+
+		// **Filter out the creditsplit marked for DELETE** before saving
+		List<CreditPayment> filteredCreditPaymentList = invoice.getCreditPaymentList().stream()
+				.filter(split -> !"DELETE".equals(split.getFlag())).collect(Collectors.toList());
+
+		// Update the creditsplit list and set action to null
+		filteredCreditPaymentList.forEach(split -> split.setFlag(null));
+		invoice.setCreditPaymentList(filteredCreditPaymentList);
+
 		invoice = invoiceRepository.save(invoice);
 		jobCard.setInvoiceObjId(invoice.getId());
 		jobCardService.simpleSave(jobCard);

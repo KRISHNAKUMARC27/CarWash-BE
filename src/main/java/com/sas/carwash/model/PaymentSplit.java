@@ -16,4 +16,7 @@ public class PaymentSplit {
 	private BigDecimal paymentAmount;
 	private String paymentMode;
 	private LocalDateTime paymentDate;
+
+	private String paymentId;
+	private String flag; // M - modify , D - delete, A - add
 }

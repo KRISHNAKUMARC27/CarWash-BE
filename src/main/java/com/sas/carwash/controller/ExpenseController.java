@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.sas.carwash.entity.Appointment;
 import com.sas.carwash.entity.Expense;
 import com.sas.carwash.entity.ExpenseCategory;
 import com.sas.carwash.service.ExpenseService;

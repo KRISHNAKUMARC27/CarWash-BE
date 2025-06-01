@@ -19,4 +19,6 @@ public class CreditPayment {
 	private String paymentMode;
 	private String comment;
 
+	private String paymentId;
+	private String flag; // M - modify , D - delete, A - add
 }

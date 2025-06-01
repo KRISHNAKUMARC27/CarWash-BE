@@ -22,8 +22,10 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 import com.sas.carwash.entity.Estimate;
 import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
+import com.sas.carwash.entity.Payments;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
+import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ public class EstimateService {
 	private final EstimateRepository estimateRepository;
 	private final JobCardService jobCardService;
 	private final SpringTemplateEngine templateEngine;
+	private final PaymentsService paymentsService;
 
 	public List<?> findAll() throws Exception {
 		// estimateData();
@@ -44,7 +47,7 @@ public class EstimateService {
 	}
 
 	public Estimate findById(String id) throws Exception {
-		return estimateRepository.findById(id).orElseThrow(() -> new RuntimeException("Estimate ID not found"));
+		return estimateRepository.findById(id).orElseThrow(() -> new RuntimeException("Estimate ID not found " + id));
 	}
 
 	public List<Estimate> findByCreditFlag() {
@@ -67,14 +70,77 @@ public class EstimateService {
 			estimate.setEstimateId(jobCardService.getNextSequenceForNewSequence("estimateId"));
 			estimate.setBillCloseDate(LocalDateTime.now());
 		}
-		estimate.getPaymentSplitList().stream().forEach(split -> {
+		for (PaymentSplit split : estimate.getPaymentSplitList()) {
+
 			if (split.getPaymentDate() == null)
 				split.setPaymentDate(LocalDateTime.now());
-		});
-		estimate.getCreditPaymentList().stream().forEach(credit -> {
+
+			if (!"CREDIT".equals(split.getPaymentMode())) {
+				if ("ADD".equals(split.getFlag())) {
+					Payments payments = Payments.builder()
+							.paymentAmount(split.getPaymentAmount())
+							.paymentDate(split.getPaymentDate())
+							.paymentMode(split.getPaymentMode())
+							.category("ESTIMATE")
+							.categoryFieldId(estimate.getEstimateId())
+							.isCreditPayment(false)
+							.build();
+					payments = paymentsService.save(payments);
+					split.setPaymentId(payments.getId());
+				} else if ("MODIFY".equals(split.getFlag())) {
+					Payments payments = paymentsService.findById(split.getPaymentId());
+					payments.setPaymentAmount(split.getPaymentAmount());
+					payments.setPaymentMode(split.getPaymentMode());
+					paymentsService.save(payments);
+				} else if ("DELETE".equals(split.getFlag())) {
+					paymentsService.deleteById(split.getPaymentId());
+				}
+			}
+
+		}
+
+		for (CreditPayment credit : estimate.getCreditPaymentList()) {
+
 			if (credit.getCreditDate() == null)
 				credit.setCreditDate(LocalDateTime.now());
-		});
+
+			if ("ADD".equals(credit.getFlag())) {
+				Payments payments = Payments.builder()
+						.paymentAmount(credit.getAmount())
+						.paymentDate(credit.getCreditDate())
+						.paymentMode(credit.getPaymentMode())
+						.category("ESTIMATE")
+						.categoryFieldId(estimate.getEstimateId())
+						.isCreditPayment(true)
+						.build();
+				payments = paymentsService.save(payments);
+				credit.setPaymentId(payments.getId());
+			} else if ("MODIFY".equals(credit.getFlag())) {
+				Payments payments = paymentsService.findById(credit.getPaymentId());
+				payments.setPaymentAmount(credit.getAmount());
+				payments.setPaymentMode(credit.getPaymentMode());
+				paymentsService.save(payments);
+			} else if ("DELETE".equals(credit.getFlag())) {
+				paymentsService.deleteById(credit.getPaymentId());
+			}
+		}
+
+		// **Filter out the paymentssplit marked for DELETE** before saving
+		List<PaymentSplit> filteredPaymentSplitList = estimate.getPaymentSplitList().stream()
+				.filter(split -> !"DELETE".equals(split.getFlag())).collect(Collectors.toList());
+
+		// Update the paymentssplit list and set action to null
+		filteredPaymentSplitList.forEach(split -> split.setFlag(null));
+		estimate.setPaymentSplitList(filteredPaymentSplitList);
+
+		// **Filter out the creditsplit marked for DELETE** before saving
+		List<CreditPayment> filteredCreditPaymentList = estimate.getCreditPaymentList().stream()
+				.filter(split -> !"DELETE".equals(split.getFlag())).collect(Collectors.toList());
+
+		// Update the creditsplit list and set action to null
+		filteredCreditPaymentList.forEach(split -> split.setFlag(null));
+		estimate.setCreditPaymentList(filteredCreditPaymentList);
+
 		estimate = estimateRepository.save(estimate);
 		jobCard.setEstimateObjId(estimate.getId());
 		jobCardService.simpleSave(jobCard);
@@ -204,7 +270,7 @@ public class EstimateService {
 			renderer.createPDF(os);
 		}
 	}
-	
+
 	// REPORT START
 	private Map<String, Object> processEstimate(List<Estimate> records) {
 		Map<String, Object> result = new HashMap<>();
@@ -253,7 +319,8 @@ public class EstimateService {
 	}
 
 	public Map<String, Object> getYearlyEstimate(int year) {
-		List<Estimate> records = estimateRepository.findAll().stream().filter(e -> e.getBillCloseDate().getYear() == year)
+		List<Estimate> records = estimateRepository.findAll().stream()
+				.filter(e -> e.getBillCloseDate().getYear() == year)
 				.collect(Collectors.toList());
 		return processEstimate(records);
 	}
