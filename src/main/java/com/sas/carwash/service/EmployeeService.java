@@ -1,5 +1,6 @@
 package com.sas.carwash.service;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
@@ -8,6 +9,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.WeekFields;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,14 +21,19 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.sas.carwash.entity.Attendance;
+import com.sas.carwash.entity.AttendancePhotos;
 import com.sas.carwash.entity.Department;
 import com.sas.carwash.entity.Employee;
 import com.sas.carwash.entity.EmployeeSalary;
+import com.sas.carwash.entity.JobVehiclePhotos;
 import com.sas.carwash.entity.Leave;
 import com.sas.carwash.model.AttendanceRecord;
+import com.sas.carwash.repository.AttendancePhotosRepository;
 import com.sas.carwash.repository.AttendanceRepository;
 import com.sas.carwash.repository.DepartmentRepository;
 import com.sas.carwash.repository.EmployeeRepository;
@@ -45,6 +53,7 @@ public class EmployeeService {
 	private final LeaveRepository leaveRepository;
 	private final DepartmentRepository departmentRepository;
 	private final EmployeeSalaryRepository employeeSalaryRepository;
+	private final AttendancePhotosRepository attendancePhotosRepository;
 
 	private final ExpenseService expenseService;
 
@@ -224,6 +233,28 @@ public class EmployeeService {
 
 	public List<?> findAllAttendaceToday() {
 		return attendanceRepository.findByDate(LocalDate.now());
+	}
+
+	public AttendancePhotos saveZipToMongo(MultipartFile zipFile, String id) throws IOException {
+
+		AttendancePhotos photos = AttendancePhotos.builder().id(id).name(zipFile.getOriginalFilename())
+				.content(zipFile.getBytes()).contentType(zipFile.getContentType()).build();
+		return attendancePhotosRepository.save(photos);
+
+	}
+
+	public AttendancePhotos getZipPhotos(String id) {
+		// TODO Auto-generated method stub
+		return attendancePhotosRepository.findById(id).orElseThrow(() -> new RuntimeException("Photos not found for id " + id));
+	}
+
+	@Scheduled(cron = "0 0 3 * * ?") // Runs daily at 3 AM
+	public void deleteOldPhotos() {
+		Calendar calendar = Calendar.getInstance();
+		calendar.add(Calendar.DAY_OF_YEAR, -30);
+		Date cutoff = calendar.getTime();
+
+		attendancePhotosRepository.deleteByCreatedAtBefore(cutoff);
 	}
 
 	public Map<String, Object> getDailyAttendance(LocalDate date) {

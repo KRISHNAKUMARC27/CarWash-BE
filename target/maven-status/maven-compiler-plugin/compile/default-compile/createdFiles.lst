@@ -4,6 +4,7 @@ com\sas\carwash\entity\ServiceCategory$ServiceCategoryBuilder.class
 com\sas\carwash\controller\InvoiceController.class
 com\sas\carwash\entity\Department$DepartmentBuilder.class
 com\sas\carwash\entity\SparesInventory$SparesInventoryBuilder.class
+com\sas\carwash\entity\AttendancePhotos.class
 com\sas\carwash\repository\ExpenseCategoryRepository.class
 com\sas\carwash\entity\JobSpares$JobSparesBuilder.class
 com\sas\carwash\repository\LaborInventoryFilter.class
@@ -87,6 +88,7 @@ com\sas\carwash\controller\UserController.class
 com\sas\carwash\repository\SparesInventoryFilterImpl.class
 com\sas\carwash\config\CustomUserDetailsService.class
 com\sas\carwash\repository\ExternalWorkInventoryRepository.class
+com\sas\carwash\entity\AttendancePhotos$AttendancePhotosBuilder.class
 com\sas\carwash\repository\DepartmentRepository.class
 com\sas\carwash\repository\ServiceCategoryRepository.class
 com\sas\carwash\entity\LaborInventory$LaborInventoryBuilder.class
@@ -116,6 +118,7 @@ com\sas\carwash\model\MultiCreditPayment.class
 com\sas\carwash\email\EmailService.class
 com\sas\carwash\entity\ExpenseCategory$ExpenseCategoryBuilder.class
 com\sas\carwash\entity\Role.class
+com\sas\carwash\repository\AttendancePhotosRepository.class
 com\sas\carwash\entity\EmployeeSalary.class
 com\sas\carwash\controller\EmployeeController.class
 com\sas\carwash\model\JobCardReport$JobCardReportBuilder.class

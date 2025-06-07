@@ -45,6 +45,7 @@ public class SecurityConfig {
 								"/**/*.jpeg",
 
 								// Frontend app routes to allow deep links
+								"/pages/**",
 								"/dashboard/**",
 								"/card/**",
 								"/spares/**",

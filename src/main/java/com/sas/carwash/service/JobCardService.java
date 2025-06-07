@@ -29,7 +29,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.Date;
+import java.util.Calendar;
 
+import org.springframework.scheduling.annotation.Scheduled;
 import com.sas.carwash.email.EmailService;
 import com.sas.carwash.entity.Estimate;
 import com.sas.carwash.entity.Invoice;
@@ -74,7 +77,7 @@ public class JobCardService {
 	private final PdfUtils pdfUtils;
 
 	@Value("${server.port}")
-    private String serverPort;
+	private String serverPort;
 
 	private String[] emailRecepients = { "krishnakumarc27@gmail.com" };
 
@@ -1054,11 +1057,11 @@ public class JobCardService {
 		return "";
 	}
 
-//	private String removeJobSparesBracketFieldsAndNullCheck(Object str) {
-//		if (str == null)
-//			return "";
-//		return String.valueOf(str).replaceAll("\s*\(.*?\)\s*", "").trim();
-//	}
+	// private String removeJobSparesBracketFieldsAndNullCheck(Object str) {
+	// if (str == null)
+	// return "";
+	// return String.valueOf(str).replaceAll("\s*\(.*?\)\s*", "").trim();
+	// }
 
 	private void sendNotifications(String title, String body) {
 		// EmailDetails emailDetails =
@@ -1350,7 +1353,16 @@ public class JobCardService {
 
 	public JobVehiclePhotos getZipPhotos(String id) {
 		// TODO Auto-generated method stub
-		return jobVehiclePhotosRepository.findById(id).orElseThrow(() -> new RuntimeException("Photos not found"));
+		return jobVehiclePhotosRepository.findById(id).orElseThrow(() -> new RuntimeException("Photos not found for id " + id));
+	}
+
+	@Scheduled(cron = "0 0 2 * * ?") // Runs daily at 2 AM
+	public void deleteOldPhotos() {
+		Calendar calendar = Calendar.getInstance();
+		calendar.add(Calendar.DAY_OF_YEAR, -30);
+		Date cutoff = calendar.getTime();
+
+		jobVehiclePhotosRepository.deleteByCreatedAtBefore(cutoff);
 	}
 
 	public ResponseEntity<ByteArrayResource> invoicePdf(String id) throws Exception {
@@ -1857,13 +1869,13 @@ public class JobCardService {
 		return jobCard;
 	}
 
-    public Map<String, String> getPhotoUrl(String id) {
+	public Map<String, String> getPhotoUrl(String id) {
 		Map<String, String> result = new HashMap<>();
 		try {
 			// Get the local host address
 			String ipAddress = InetAddress.getLocalHost().getHostAddress();
 			// Construct the URL
-            String url = "https://" + "rhineconstruction.in" + ":" + serverPort + "/jobCard/getPhotos/" + id;
+			String url = "https://" + "rhineconstruction.in" + ":" + serverPort + "/jobCard/getPhotos/" + id;
 			result.put("url", url);
 		} catch (UnknownHostException e) {
 			// Handle the exception if the IP address cannot be determined

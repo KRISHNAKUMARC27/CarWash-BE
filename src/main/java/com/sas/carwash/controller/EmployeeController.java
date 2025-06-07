@@ -4,6 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,8 +17,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.sas.carwash.entity.Attendance;
+import com.sas.carwash.entity.AttendancePhotos;
 import com.sas.carwash.entity.Department;
 import com.sas.carwash.entity.Employee;
 import com.sas.carwash.entity.EmployeeSalary;
@@ -107,6 +112,31 @@ public class EmployeeController {
 	public List<?> findAllAttendaceToday() {
 		return employeeService.findAllAttendaceToday();
 	}
+
+	@PostMapping("/uploadPhotos/{id}")
+	public ResponseEntity<?> uploadPhotos(@RequestParam("file") MultipartFile zipFile, @PathVariable String id) {
+		try {
+			// Save the zip file to MongoDB
+			return ResponseEntity.ok(employeeService.saveZipToMongo(zipFile, id));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("Error uploading photos: " + e.getMessage());
+		}
+	}
+
+	@GetMapping("/getPhotos/{id}")
+	public ResponseEntity<?> getPhotos(@PathVariable String id) {
+		try {
+			AttendancePhotos photoDoc = employeeService.getZipPhotos(id);
+			return ResponseEntity.ok().contentType(MediaType.parseMediaType(photoDoc.getContentType()))
+					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + photoDoc.getName() + "\"")
+					.body(photoDoc.getContent());
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("Error uploading photos: " + e.getMessage());
+		}
+	}
+
 
 	@GetMapping("/attendance/daily/{date}")
 	public Map<String, Object> getDailyAttendance(@PathVariable String date) {

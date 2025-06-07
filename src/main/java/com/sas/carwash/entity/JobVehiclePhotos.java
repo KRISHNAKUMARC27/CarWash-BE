@@ -1,5 +1,8 @@
 package com.sas.carwash.entity;
 
+import java.util.Date;
+
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 
 import lombok.Builder;
@@ -15,4 +18,7 @@ public class JobVehiclePhotos {
     private String name;
     private byte[] content;
     private String contentType;
+
+    @CreatedDate
+    private Date createdAt;
 }
