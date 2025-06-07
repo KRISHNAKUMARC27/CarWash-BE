@@ -41,7 +41,7 @@ public class StatsController {
 	}
 
 	@GetMapping("/revenueEarnings/{id}")
-	public Map<String, Object> getCurrentWeekEarnings(@PathVariable String id) {
+	public Map<String, Object> getEarnings(@PathVariable String id) {
 		switch (id) {
 		case "D":
 			return statsService.dailyStats();
@@ -53,6 +53,22 @@ public class StatsController {
 			return statsService.yearlyStats();
 		default:
 			return statsService.dailyStats();
+		}
+	}
+
+	@GetMapping("/revenueExpenses/{id}")
+	public Map<String, Object> getExpenses(@PathVariable String id) {
+		switch (id) {
+		case "D":
+			return statsService.dailyStatsExpense();
+		case "W":
+			return statsService.weeklyStatsExpense();
+		case "M":
+			return statsService.monthlyStatsExpense();
+		case "Y":
+			return statsService.yearlyStatsExpense();
+		default:
+			return statsService.dailyStatsExpense();
 		}
 	}
 

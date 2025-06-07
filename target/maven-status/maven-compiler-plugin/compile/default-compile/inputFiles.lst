@@ -12,6 +12,7 @@ F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\service\SendSMS.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\ExternalWorkInventoryFilter.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\service\EstimateService.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\Appointment.java
+F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\controller\PaymentsController.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\model\AttendanceRecord.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\ReceiptInvoiceRepository.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\ReceiptEstimate.java
@@ -68,6 +69,7 @@ F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\Appointme
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\Estimate.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\JobSparesInfo.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\AttendanceRepository.java
+F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\PaymentsRepository.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\model\MultiCreditPayment.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\controller\ConfigController.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\Employee.java
@@ -84,6 +86,7 @@ F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\RoleRepos
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\SparesEventsRepository.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\LaborInventoryFilterImpl.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\controller\SparesController.java
+F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\Payments.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\Leave.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\EmployeeSalaryRepository.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\JobVehiclePhotos.java
@@ -105,6 +108,7 @@ F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\JobCardRe
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\repository\ServiceInventoryFilterImpl.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\entity\JobCard.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\model\SparesFilter.java
+F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\service\PaymentsService.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\model\AuthResponse.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\model\CreditPayment.java
 F:\WORK\CARWASH\BE\CarWash-BE\src\main\java\com\sas\carwash\controller\ExpenseController.java

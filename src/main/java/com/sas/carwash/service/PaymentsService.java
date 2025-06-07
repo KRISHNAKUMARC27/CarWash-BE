@@ -21,25 +21,25 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PaymentsService {
 
-    private final PaymentsRepository paymentsRepository;
+	private final PaymentsRepository paymentsRepository;
 
-    public Payments save(Payments payments) {
-        return paymentsRepository.save(payments);
-    }
+	public Payments save(Payments payments) {
+		return paymentsRepository.save(payments);
+	}
 
-    public Payments findById(String id) {
-        return paymentsRepository.findById(id).orElseThrow(() -> new RuntimeException("Payments ID not found " + id));
-    }
+	public Payments findById(String id) {
+		return paymentsRepository.findById(id).orElseThrow(() -> new RuntimeException("Payments ID not found " + id));
+	}
 
-    public void deleteById(String id) {
-        paymentsRepository.deleteById(id);
-    }
+	public void deleteById(String id) {
+		paymentsRepository.deleteById(id);
+	}
 
-    public List<Payments> findAll() {
-        return paymentsRepository.findAllByOrderByIdDesc();
-    }
+	public List<Payments> findAll() {
+		return paymentsRepository.findAllByOrderByIdDesc();
+	}
 
-    	// REPORT START
+	// REPORT START
 	private Map<String, Object> processPayments(List<Payments> records) {
 		Map<String, Object> result = new HashMap<>();
 
@@ -64,6 +64,19 @@ public class PaymentsService {
 								exp -> Optional.ofNullable(exp.getPaymentAmount()).orElse(BigDecimal.ZERO),
 								BigDecimal::add)));
 		result.put("byPaymentMode", byPaymentMode);
+
+		Map<String, BigDecimal> isCredit = records.stream()
+				.collect(Collectors.groupingBy(
+						exp -> {
+							Boolean credit = Optional.ofNullable(exp.isCreditPayment()).orElse(false);
+							return credit ? "Credit" : "Non-Credit";
+						},
+						Collectors.reducing(
+								BigDecimal.ZERO,
+								exp -> Optional.ofNullable(exp.getPaymentAmount()).orElse(BigDecimal.ZERO),
+								BigDecimal::add)));
+
+		result.put("isCredit", isCredit);
 
 		return result;
 	}
@@ -103,5 +116,4 @@ public class PaymentsService {
 		return processPayments(records);
 	}
 
-    
 }

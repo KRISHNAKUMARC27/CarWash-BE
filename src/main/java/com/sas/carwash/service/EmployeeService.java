@@ -574,7 +574,7 @@ public class EmployeeService {
 		long totalPresent = records.stream().filter(Attendance::getPresent).count();
 		long totalAbsent = records.size() - totalPresent;
 
-		Map<String, Long> workingDaysPerEmployee = records.stream()
+		Map<String, Long> workingDaysPerEmployee = records.stream().filter(Attendance::getPresent)
 				.collect(Collectors.groupingBy(Attendance::getEmployeeName, Collectors.counting()));
 
 		result.put("totalPresent", totalPresent);

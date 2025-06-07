@@ -15,18 +15,23 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import com.sas.carwash.entity.Expense;
 import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
+import com.sas.carwash.entity.Payments;
 import com.sas.carwash.entity.SparesEvents;
 import com.sas.carwash.entity.SparesInventory;
 import com.sas.carwash.model.JobCardReport;
+import com.sas.carwash.repository.ExpenseRepository;
 import com.sas.carwash.repository.JobCardRepository;
 import com.sas.carwash.repository.JobSparesRepository;
+import com.sas.carwash.repository.PaymentsRepository;
 import com.sas.carwash.repository.SparesEventsRepository;
 import com.sas.carwash.repository.SparesInventoryRepository;
 
@@ -42,11 +47,13 @@ public class StatsService {
 	private final SparesInventoryRepository sparesInventoryRepository;
 	private final JobCardRepository jobCardRepository;
 	private final JobSparesRepository jobSparesRepository;
+	private final PaymentsRepository paymentsRepository;
+	private final ExpenseRepository expenseRepository;
 
-//	List<BigDecimal> currentWeekEarningsSeries = null;
-//	BigDecimal weekTotalSparesValueSum = BigDecimal.ZERO;
-//	BigDecimal weekTotalLabourValueSum = BigDecimal.ZERO;
-//	BigDecimal weekGrandTotalSum = BigDecimal.ZERO;
+	// List<BigDecimal> currentWeekEarningsSeries = null;
+	// BigDecimal weekTotalSparesValueSum = BigDecimal.ZERO;
+	// BigDecimal weekTotalLabourValueSum = BigDecimal.ZERO;
+	// BigDecimal weekGrandTotalSum = BigDecimal.ZERO;
 
 	// Map<String, Object> chartData = new HashMap<>();
 	BigDecimal totalSparesWorth = BigDecimal.ZERO;
@@ -55,8 +62,8 @@ public class StatsService {
 	public void onApplicationEvent(ContextRefreshedEvent event) {
 		// getChartData();
 		// weeklyStats();
-//		dailyStats();
-//		dailyStatsJobCards();
+		// dailyStats();
+		// dailyStatsJobCards();
 		List<SparesInventory> sparesList = sparesInventoryRepository.findAll();
 		sparesList.forEach(s -> totalSparesWorth = totalSparesWorth.add(s.getAmount()));
 
@@ -112,26 +119,42 @@ public class StatsService {
 		return weekMap;
 	}
 
-	public Map<DayOfWeek, BigDecimal> calculateWeeklyEarnings(List<JobSpares> jobSparesList) {
+	private Map<Integer, BigDecimal> initializeMonthMap() {
+		Map<Integer, BigDecimal> monthMap = new HashMap<>();
+		for (int week = 1; week <= 5; week++) {
+			monthMap.put(week, BigDecimal.ZERO);
+		}
+		return monthMap;
+	}
+
+	private Map<Integer, BigDecimal> initializeYearMap() {
+		Map<Integer, BigDecimal> yearMap = new HashMap<>();
+		for (int month = 1; month <= 12; month++) {
+			yearMap.put(month, BigDecimal.ZERO);
+		}
+		return yearMap;
+	}
+
+	public Map<DayOfWeek, BigDecimal> calculateWeeklyEarnings(List<Payments> records) {
 		Map<DayOfWeek, BigDecimal> weeklyEarnings = initializeWeekMap();
 		LocalDate startOfWeek = LocalDate.now().with(DayOfWeek.MONDAY);
 		LocalDate endOfWeek = LocalDate.now().with(DayOfWeek.SUNDAY);
 
-		for (JobSpares job : jobSparesList) {
-			if (job.getJobCloseDate() != null && !job.getGrandTotal().equals(BigDecimal.ZERO)) {
-				LocalDate jobDate = job.getJobCloseDate().toLocalDate();
+		for (Payments pay : records) {
+			if (pay.getPaymentDate() != null && !pay.getPaymentAmount().equals(BigDecimal.ZERO)) {
+				LocalDate jobDate = pay.getPaymentDate().toLocalDate();
 				if (!jobDate.isBefore(startOfWeek) && !jobDate.isAfter(endOfWeek)) {
-					DayOfWeek day = job.getJobCloseDate().getDayOfWeek();
+					DayOfWeek day = pay.getPaymentDate().getDayOfWeek();
 					BigDecimal currentTotal = weeklyEarnings.get(day);
-					weeklyEarnings.put(day, currentTotal.add(job.getGrandTotal()));
+					weeklyEarnings.put(day, currentTotal.add(pay.getPaymentAmount()));
 				}
 			}
 		}
 		return weeklyEarnings;
 	}
 
-	public List<BigDecimal> getWeeklyEarningsSeries(List<JobSpares> jobSparesList) {
-		Map<DayOfWeek, BigDecimal> weeklyEarnings = calculateWeeklyEarnings(jobSparesList);
+	public List<BigDecimal> getWeeklyEarningsSeries(List<Payments> records) {
+		Map<DayOfWeek, BigDecimal> weeklyEarnings = calculateWeeklyEarnings(records);
 		List<BigDecimal> earningsSeries = new ArrayList<>();
 
 		for (DayOfWeek day : DayOfWeek.values()) {
@@ -144,31 +167,28 @@ public class StatsService {
 	}
 
 	public Map<String, Object> weeklyStats() {
-		List<JobSpares> currentWeekSpares = getJobsClosedThisWeek();
-		List<BigDecimal> currentWeekEarningsSeries = getWeeklyEarningsSeries(currentWeekSpares);
-		// List<Integer> jobCardSeries = getWeeklyJobCardsSeries(currentWeekSpares);
+		WeekFields weekFields = WeekFields.of(Locale.getDefault());
+		int currentWeek = LocalDate.now().get(weekFields.weekOfWeekBasedYear());
+		int currentYear = LocalDate.now().getYear();
+		List<Payments> records = paymentsRepository.findAll().stream()
+				.filter(e -> {
+					LocalDateTime dateTime = e.getPaymentDate();
+					return dateTime.getYear() == currentYear &&
+							dateTime.get(weekFields.weekOfWeekBasedYear()) == currentWeek;
+				})
+				.collect(Collectors.toList());
+		List<BigDecimal> currentWeekEarningsSeries = getWeeklyEarningsSeries(records);
 
-		BigDecimal weekTotalSparesValueSum = BigDecimal.ZERO;
-		BigDecimal weekTotalLabourValueSum = BigDecimal.ZERO;
 		BigDecimal weekGrandTotalSum = BigDecimal.ZERO;
 
-		for (JobSpares jobSpares : currentWeekSpares) {
-			weekTotalSparesValueSum = weekTotalSparesValueSum
-					.add(jobSpares.getTotalSparesValue() != null ? jobSpares.getTotalSparesValue() : BigDecimal.ZERO);
-			weekTotalLabourValueSum = weekTotalLabourValueSum
-					.add(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO);
+		for (Payments pay : records) {
 			weekGrandTotalSum = weekGrandTotalSum
-					.add(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO);
+					.add(pay.getPaymentAmount() != null ? pay.getPaymentAmount() : BigDecimal.ZERO);
 		}
 
 		Map<String, Object> currentWeekValues = new HashMap<>();
 		currentWeekValues.put("earningsSeries", currentWeekEarningsSeries);
-		currentWeekValues.put("totalSparesValueSum", weekTotalSparesValueSum);
-		currentWeekValues.put("totalLabourValueSum", weekTotalLabourValueSum);
 		currentWeekValues.put("grandTotalSum", weekGrandTotalSum);
-
-//		currentWeekValues.put("jobCardSeries", jobCardSeries);
-//		currentWeekValues.put("totalJobCards", currentWeekSpares.size());
 
 		Map<String, Object> chartData = getChartData();
 		Map<String, Object> seriesItem = new HashMap<>();
@@ -183,51 +203,33 @@ public class StatsService {
 
 		currentWeekValues.put("chartData", chartData);
 
-//		Map<String, Object> chartDataJobCard = getChartData();
-//		Map<String, Object> seriesItemJobCard = new HashMap<>();
-//		seriesItemJobCard.put("name", "Per day");
-//		seriesItemJobCard.put("data", jobCardSeries);
-//
-//		chartDataJobCard.put("series", List.of(seriesItemJobCard));
-//		
-//		Map<String, Object> optionsJobCard = (Map<String, Object>) chartDataJobCard.get("options");
-//		optionsJobCard.put("yaxis", Map.of("min", 0, "max", 50));
-
-//		currentWeekValues.put("chartDataJobCard", chartDataJobCard);
-
 		return currentWeekValues;
 	}
 
-	public List<BigDecimal> getTodayEarningsSeries(List<JobSpares> jobSparesList) {
+	public List<BigDecimal> getTodayEarningsSeries(List<Payments> records) {
 		List<BigDecimal> earningsSeries = new ArrayList<>();
 
-		for (JobSpares jobSpares : jobSparesList) {
-			earningsSeries.add(jobSpares.getGrandTotal());
+		for (Payments pay : records) {
+			earningsSeries.add(pay.getPaymentAmount());
 		}
 		return earningsSeries;
 	}
 
 	public Map<String, Object> dailyStats() {
-		List<JobSpares> currentDaySpares = getJobsClosedToday();
-		List<BigDecimal> currentDayEarningsSeries = getTodayEarningsSeries(currentDaySpares);
+		LocalDateTime start = LocalDate.now().atStartOfDay();
+		LocalDateTime end = start.plusDays(1);
+		List<Payments> records = paymentsRepository.findByPaymentDateBetween(start, end);
+		List<BigDecimal> currentDayEarningsSeries = getTodayEarningsSeries(records);
 
-		BigDecimal dayTotalSparesValueSum = BigDecimal.ZERO;
-		BigDecimal dayTotalLabourValueSum = BigDecimal.ZERO;
 		BigDecimal dayGrandTotalSum = BigDecimal.ZERO;
 
-		for (JobSpares jobSpares : currentDaySpares) {
-			dayTotalSparesValueSum = dayTotalSparesValueSum
-					.add(jobSpares.getTotalSparesValue() != null ? jobSpares.getTotalSparesValue() : BigDecimal.ZERO);
-			dayTotalLabourValueSum = dayTotalLabourValueSum
-					.add(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO);
+		for (Payments pay : records) {
 			dayGrandTotalSum = dayGrandTotalSum
-					.add(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO);
+					.add(pay.getPaymentAmount() != null ? pay.getPaymentAmount() : BigDecimal.ZERO);
 		}
 
 		Map<String, Object> currentDayValues = new HashMap<>();
 		currentDayValues.put("earningsSeries", currentDayEarningsSeries);
-		currentDayValues.put("totalSparesValueSum", dayTotalSparesValueSum);
-		currentDayValues.put("totalLabourValueSum", dayTotalLabourValueSum);
 		currentDayValues.put("grandTotalSum", dayGrandTotalSum);
 
 		Map<String, Object> chartData = getChartData();
@@ -245,35 +247,27 @@ public class StatsService {
 		return currentDayValues;
 	}
 
-	private Map<Integer, BigDecimal> initializeMonthMap() {
-		Map<Integer, BigDecimal> monthMap = new HashMap<>();
-		for (int week = 1; week <= 5; week++) {
-			monthMap.put(week, BigDecimal.ZERO);
-		}
-		return monthMap;
-	}
-
-	private Map<Integer, BigDecimal> calculateMonthlyEarnings(List<JobSpares> jobSparesList) {
+	private Map<Integer, BigDecimal> calculateMonthlyEarnings(List<Payments> records) {
 		Map<Integer, BigDecimal> monthlyEarnings = initializeMonthMap();
 		LocalDate startOfMonth = LocalDate.now().with(TemporalAdjusters.firstDayOfMonth());
 		LocalDate endOfMonth = LocalDate.now().with(TemporalAdjusters.lastDayOfMonth());
 		WeekFields weekFields = WeekFields.of(Locale.getDefault());
 
-		for (JobSpares job : jobSparesList) {
-			if (job.getJobCloseDate() != null && !job.getGrandTotal().equals(BigDecimal.ZERO)) {
-				LocalDate jobDate = job.getJobCloseDate().toLocalDate();
+		for (Payments job : records) {
+			if (job.getPaymentDate() != null && !job.getPaymentAmount().equals(BigDecimal.ZERO)) {
+				LocalDate jobDate = job.getPaymentDate().toLocalDate();
 				if (!jobDate.isBefore(startOfMonth) && !jobDate.isAfter(endOfMonth)) {
 					int weekOfMonth = jobDate.get(weekFields.weekOfMonth());
 					BigDecimal currentTotal = monthlyEarnings.get(weekOfMonth);
-					monthlyEarnings.put(weekOfMonth, currentTotal.add(job.getGrandTotal()));
+					monthlyEarnings.put(weekOfMonth, currentTotal.add(job.getPaymentAmount()));
 				}
 			}
 		}
 		return monthlyEarnings;
 	}
 
-	private List<BigDecimal> getMonthlyEarningsSeries(List<JobSpares> jobSparesList) {
-		Map<Integer, BigDecimal> monthlyEarnings = calculateMonthlyEarnings(jobSparesList);
+	private List<BigDecimal> getMonthlyEarningsSeries(List<Payments> records) {
+		Map<Integer, BigDecimal> monthlyEarnings = calculateMonthlyEarnings(records);
 		List<BigDecimal> earningsSeries = new ArrayList<>();
 
 		WeekFields weekFields = WeekFields.of(Locale.getDefault());
@@ -288,26 +282,21 @@ public class StatsService {
 	}
 
 	public Map<String, Object> monthlyStats() {
-		List<JobSpares> currentMonthSpares = getJobsClosedThisMonth();
-		List<BigDecimal> currentEarningsSeries = getMonthlyEarningsSeries(currentMonthSpares);
+		List<Payments> records = paymentsRepository.findAll().stream()
+				.filter(e -> e.getPaymentDate().getYear() == LocalDate.now().getYear()
+						&& e.getPaymentDate().getMonthValue() == LocalDate.now().getMonthValue())
+				.collect(Collectors.toList());
+		List<BigDecimal> currentEarningsSeries = getMonthlyEarningsSeries(records);
 
-		BigDecimal totalSparesValueSum = BigDecimal.ZERO;
-		BigDecimal totalLabourValueSum = BigDecimal.ZERO;
 		BigDecimal grandTotalSum = BigDecimal.ZERO;
 
-		for (JobSpares jobSpares : currentMonthSpares) {
-			totalSparesValueSum = totalSparesValueSum
-					.add(jobSpares.getTotalSparesValue() != null ? jobSpares.getTotalSparesValue() : BigDecimal.ZERO);
-			totalLabourValueSum = totalLabourValueSum
-					.add(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO);
+		for (Payments pay : records) {
 			grandTotalSum = grandTotalSum
-					.add(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO);
+					.add(pay.getPaymentAmount() != null ? pay.getPaymentAmount() : BigDecimal.ZERO);
 		}
 
 		Map<String, Object> currentValues = new HashMap<>();
 		currentValues.put("earningsSeries", currentEarningsSeries);
-		currentValues.put("totalSparesValueSum", totalSparesValueSum);
-		currentValues.put("totalLabourValueSum", totalLabourValueSum);
 		currentValues.put("grandTotalSum", grandTotalSum);
 
 		Map<String, Object> chartData = getChartData();
@@ -325,33 +314,25 @@ public class StatsService {
 		return currentValues;
 	}
 
-	private Map<Integer, BigDecimal> initializeYearMap() {
-		Map<Integer, BigDecimal> yearMap = new HashMap<>();
-		for (int month = 1; month <= 12; month++) {
-			yearMap.put(month, BigDecimal.ZERO);
-		}
-		return yearMap;
-	}
-
-	private Map<Integer, BigDecimal> calculateYearlyEarnings(List<JobSpares> jobSparesList) {
+	private Map<Integer, BigDecimal> calculateYearlyEarnings(List<Payments> records) {
 		Map<Integer, BigDecimal> yearlyEarnings = initializeYearMap();
 		int currentYear = LocalDate.now().getYear();
 
-		for (JobSpares job : jobSparesList) {
-			if (job.getJobCloseDate() != null && !job.getGrandTotal().equals(BigDecimal.ZERO)) {
-				LocalDate jobDate = job.getJobCloseDate().toLocalDate();
+		for (Payments job : records) {
+			if (job.getPaymentDate() != null && !job.getPaymentAmount().equals(BigDecimal.ZERO)) {
+				LocalDate jobDate = job.getPaymentDate().toLocalDate();
 				if (jobDate.getYear() == currentYear) {
 					int month = jobDate.getMonthValue();
 					BigDecimal currentTotal = yearlyEarnings.get(month);
-					yearlyEarnings.put(month, currentTotal.add(job.getGrandTotal()));
+					yearlyEarnings.put(month, currentTotal.add(job.getPaymentAmount()));
 				}
 			}
 		}
 		return yearlyEarnings;
 	}
 
-	private List<BigDecimal> getYearlyEarningsSeries(List<JobSpares> jobSparesList) {
-		Map<Integer, BigDecimal> yearlyEarnings = calculateYearlyEarnings(jobSparesList);
+	private List<BigDecimal> getYearlyEarningsSeries(List<Payments> records) {
+		Map<Integer, BigDecimal> yearlyEarnings = calculateYearlyEarnings(records);
 		List<BigDecimal> earningsSeries = new ArrayList<>();
 
 		int currentMonth = LocalDate.now().getMonthValue();
@@ -364,26 +345,20 @@ public class StatsService {
 	}
 
 	public Map<String, Object> yearlyStats() {
-		List<JobSpares> currentYearSpares = getJobsClosedThisYear();
-		List<BigDecimal> currentEarningsSeries = getYearlyEarningsSeries(currentYearSpares);
+		List<Payments> records = paymentsRepository.findAll().stream()
+				.filter(e -> e.getPaymentDate().getYear() == LocalDate.now().getYear())
+				.collect(Collectors.toList());
+		List<BigDecimal> currentEarningsSeries = getYearlyEarningsSeries(records);
 
-		BigDecimal totalSparesValueSum = BigDecimal.ZERO;
-		BigDecimal totalLabourValueSum = BigDecimal.ZERO;
 		BigDecimal grandTotalSum = BigDecimal.ZERO;
 
-		for (JobSpares jobSpares : currentYearSpares) {
-			totalSparesValueSum = totalSparesValueSum
-					.add(jobSpares.getTotalSparesValue() != null ? jobSpares.getTotalSparesValue() : BigDecimal.ZERO);
-			totalLabourValueSum = totalLabourValueSum
-					.add(jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue() : BigDecimal.ZERO);
+		for (Payments pay : records) {
 			grandTotalSum = grandTotalSum
-					.add(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO);
+					.add(pay.getPaymentAmount() != null ? pay.getPaymentAmount() : BigDecimal.ZERO);
 		}
 
 		Map<String, Object> currentValues = new HashMap<>();
 		currentValues.put("earningsSeries", currentEarningsSeries);
-		currentValues.put("totalSparesValueSum", totalSparesValueSum);
-		currentValues.put("totalLabourValueSum", totalLabourValueSum);
 		currentValues.put("grandTotalSum", grandTotalSum);
 
 		Map<String, Object> chartData = getChartData();
@@ -400,6 +375,250 @@ public class StatsService {
 
 		return currentValues;
 	}
+
+	// Expense starts
+	public Map<DayOfWeek, BigDecimal> calculateWeeklyExpense(List<Expense> records) {
+		Map<DayOfWeek, BigDecimal> weeklyExpense = initializeWeekMap();
+		LocalDate startOfWeek = LocalDate.now().with(DayOfWeek.MONDAY);
+		LocalDate endOfWeek = LocalDate.now().with(DayOfWeek.SUNDAY);
+
+		for (Expense pay : records) {
+			if (pay.getDate() != null && !pay.getExpenseAmount().equals(BigDecimal.ZERO)) {
+				LocalDate jobDate = pay.getDate().toLocalDate();
+				if (!jobDate.isBefore(startOfWeek) && !jobDate.isAfter(endOfWeek)) {
+					DayOfWeek day = pay.getDate().getDayOfWeek();
+					BigDecimal currentTotal = weeklyExpense.get(day);
+					weeklyExpense.put(day, currentTotal.add(pay.getExpenseAmount()));
+				}
+			}
+		}
+		return weeklyExpense;
+	}
+
+	public List<BigDecimal> getWeeklyExpenseSeries(List<Expense> records) {
+		Map<DayOfWeek, BigDecimal> weeklyExpense = calculateWeeklyExpense(records);
+		List<BigDecimal> earningsSeries = new ArrayList<>();
+
+		for (DayOfWeek day : DayOfWeek.values()) {
+			// Assuming the week starts on Monday
+			if (day.getValue() <= LocalDate.now().getDayOfWeek().getValue()) {
+				earningsSeries.add(weeklyExpense.get(day));
+			}
+		}
+		return earningsSeries;
+	}
+
+	public Map<String, Object> weeklyStatsExpense() {
+		WeekFields weekFields = WeekFields.of(Locale.getDefault());
+		int currentWeek = LocalDate.now().get(weekFields.weekOfWeekBasedYear());
+		int currentYear = LocalDate.now().getYear();
+		List<Expense> records = expenseRepository.findAll().stream()
+				.filter(e -> {
+					LocalDateTime dateTime = e.getDate();
+					return dateTime.getYear() == currentYear &&
+							dateTime.get(weekFields.weekOfWeekBasedYear()) == currentWeek;
+				})
+				.collect(Collectors.toList());
+		List<BigDecimal> currentWeekExpenseSeries = getWeeklyExpenseSeries(records);
+
+		BigDecimal weekGrandTotalSum = BigDecimal.ZERO;
+
+		for (Expense pay : records) {
+			weekGrandTotalSum = weekGrandTotalSum
+					.add(pay.getExpenseAmount() != null ? pay.getExpenseAmount() : BigDecimal.ZERO);
+		}
+
+		Map<String, Object> currentWeekValues = new HashMap<>();
+		currentWeekValues.put("earningsSeries", currentWeekExpenseSeries);
+		currentWeekValues.put("grandTotalSum", weekGrandTotalSum);
+
+		Map<String, Object> chartData = getChartData();
+		Map<String, Object> seriesItem = new HashMap<>();
+		seriesItem.put("name", "Per day");
+		seriesItem.put("data", currentWeekExpenseSeries);
+
+		chartData.put("series", List.of(seriesItem));
+
+		Map<String, Object> options = (Map<String, Object>) chartData.get("options");
+		options.put("xaxis", Map.of("categories", List.of("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")));
+		options.put("yaxis", Map.of("min", 0, "max", 50000));
+
+		currentWeekValues.put("chartData", chartData);
+
+		return currentWeekValues;
+	}
+
+	public List<BigDecimal> getTodayExpenseSeries(List<Expense> records) {
+		List<BigDecimal> earningsSeries = new ArrayList<>();
+
+		for (Expense pay : records) {
+			earningsSeries.add(pay.getExpenseAmount());
+		}
+		return earningsSeries;
+	}
+
+	public Map<String, Object> dailyStatsExpense() {
+		LocalDateTime start = LocalDate.now().atStartOfDay();
+		LocalDateTime end = start.plusDays(1);
+		List<Expense> records = expenseRepository.findByDateBetween(start, end);
+		List<BigDecimal> currentDayExpenseSeries = getTodayExpenseSeries(records);
+
+		BigDecimal dayGrandTotalSum = BigDecimal.ZERO;
+
+		for (Expense pay : records) {
+			dayGrandTotalSum = dayGrandTotalSum
+					.add(pay.getExpenseAmount() != null ? pay.getExpenseAmount() : BigDecimal.ZERO);
+		}
+
+		Map<String, Object> currentDayValues = new HashMap<>();
+		currentDayValues.put("earningsSeries", currentDayExpenseSeries);
+		currentDayValues.put("grandTotalSum", dayGrandTotalSum);
+
+		Map<String, Object> chartData = getChartData();
+		Map<String, Object> seriesItem = new HashMap<>();
+		seriesItem.put("name", "job");
+		seriesItem.put("data", currentDayExpenseSeries);
+
+		chartData.put("series", List.of(seriesItem));
+
+		Map<String, Object> options = (Map<String, Object>) chartData.get("options");
+		options.put("yaxis", Map.of("min", 0, "max", 15000));
+
+		currentDayValues.put("chartData", chartData);
+
+		return currentDayValues;
+	}
+
+	private Map<Integer, BigDecimal> calculateMonthlyExpense(List<Expense> records) {
+		Map<Integer, BigDecimal> monthlyExpense = initializeMonthMap();
+		LocalDate startOfMonth = LocalDate.now().with(TemporalAdjusters.firstDayOfMonth());
+		LocalDate endOfMonth = LocalDate.now().with(TemporalAdjusters.lastDayOfMonth());
+		WeekFields weekFields = WeekFields.of(Locale.getDefault());
+
+		for (Expense job : records) {
+			if (job.getDate() != null && !job.getExpenseAmount().equals(BigDecimal.ZERO)) {
+				LocalDate jobDate = job.getDate().toLocalDate();
+				if (!jobDate.isBefore(startOfMonth) && !jobDate.isAfter(endOfMonth)) {
+					int weekOfMonth = jobDate.get(weekFields.weekOfMonth());
+					BigDecimal currentTotal = monthlyExpense.get(weekOfMonth);
+					monthlyExpense.put(weekOfMonth, currentTotal.add(job.getExpenseAmount()));
+				}
+			}
+		}
+		return monthlyExpense;
+	}
+
+	private List<BigDecimal> getMonthlyExpenseSeries(List<Expense> records) {
+		Map<Integer, BigDecimal> monthlyExpense = calculateMonthlyExpense(records);
+		List<BigDecimal> earningsSeries = new ArrayList<>();
+
+		WeekFields weekFields = WeekFields.of(Locale.getDefault());
+		int currentWeekOfMonth = LocalDate.now().get(weekFields.weekOfMonth());
+
+		for (int week = 1; week <= 5; week++) {
+			if (week <= currentWeekOfMonth) {
+				earningsSeries.add(monthlyExpense.get(week));
+			}
+		}
+		return earningsSeries;
+	}
+
+	public Map<String, Object> monthlyStatsExpense() {
+		List<Expense> records = expenseRepository.findAll().stream()
+				.filter(e -> e.getDate().getYear() == LocalDate.now().getYear()
+						&& e.getDate().getMonthValue() == LocalDate.now().getMonthValue())
+				.collect(Collectors.toList());
+		List<BigDecimal> currentExpenseSeries = getMonthlyExpenseSeries(records);
+
+		BigDecimal grandTotalSum = BigDecimal.ZERO;
+
+		for (Expense pay : records) {
+			grandTotalSum = grandTotalSum
+					.add(pay.getExpenseAmount() != null ? pay.getExpenseAmount() : BigDecimal.ZERO);
+		}
+
+		Map<String, Object> currentValues = new HashMap<>();
+		currentValues.put("earningsSeries", currentExpenseSeries);
+		currentValues.put("grandTotalSum", grandTotalSum);
+
+		Map<String, Object> chartData = getChartData();
+		Map<String, Object> seriesItem = new HashMap<>();
+		seriesItem.put("name", "Per week");
+		seriesItem.put("data", currentExpenseSeries);
+
+		chartData.put("series", List.of(seriesItem));
+
+		Map<String, Object> options = (Map<String, Object>) chartData.get("options");
+		options.put("yaxis", Map.of("min", 0, "max", 100000));
+
+		currentValues.put("chartData", chartData);
+
+		return currentValues;
+	}
+
+	private Map<Integer, BigDecimal> calculateYearlyExpense(List<Expense> records) {
+		Map<Integer, BigDecimal> yearlyExpense = initializeYearMap();
+		int currentYear = LocalDate.now().getYear();
+
+		for (Expense job : records) {
+			if (job.getDate() != null && !job.getExpenseAmount().equals(BigDecimal.ZERO)) {
+				LocalDate jobDate = job.getDate().toLocalDate();
+				if (jobDate.getYear() == currentYear) {
+					int month = jobDate.getMonthValue();
+					BigDecimal currentTotal = yearlyExpense.get(month);
+					yearlyExpense.put(month, currentTotal.add(job.getExpenseAmount()));
+				}
+			}
+		}
+		return yearlyExpense;
+	}
+
+	private List<BigDecimal> getYearlyExpenseSeries(List<Expense> records) {
+		Map<Integer, BigDecimal> yearlyExpense = calculateYearlyExpense(records);
+		List<BigDecimal> earningsSeries = new ArrayList<>();
+
+		int currentMonth = LocalDate.now().getMonthValue();
+		for (int month = 1; month <= 12; month++) {
+			if (month <= currentMonth) {
+				earningsSeries.add(yearlyExpense.get(month));
+			}
+		}
+		return earningsSeries;
+	}
+
+	public Map<String, Object> yearlyStatsExpense() {
+		List<Expense> records = expenseRepository.findAll().stream()
+				.filter(e -> e.getDate().getYear() == LocalDate.now().getYear())
+				.collect(Collectors.toList());
+		List<BigDecimal> currentExpenseSeries = getYearlyExpenseSeries(records);
+
+		BigDecimal grandTotalSum = BigDecimal.ZERO;
+
+		for (Expense pay : records) {
+			grandTotalSum = grandTotalSum
+					.add(pay.getExpenseAmount() != null ? pay.getExpenseAmount() : BigDecimal.ZERO);
+		}
+
+		Map<String, Object> currentValues = new HashMap<>();
+		currentValues.put("earningsSeries", currentExpenseSeries);
+		currentValues.put("grandTotalSum", grandTotalSum);
+
+		Map<String, Object> chartData = getChartData();
+		Map<String, Object> seriesItem = new HashMap<>();
+		seriesItem.put("name", "Per Month");
+		seriesItem.put("data", currentExpenseSeries);
+
+		chartData.put("series", List.of(seriesItem));
+
+		Map<String, Object> options = (Map<String, Object>) chartData.get("options");
+		options.put("yaxis", Map.of("min", 0, "max", 1000000));
+
+		currentValues.put("chartData", chartData);
+
+		return currentValues;
+	}
+
+	// expense ends
 
 	private Map<DayOfWeek, Integer> initializeWeekMapJobCard() {
 		Map<DayOfWeek, Integer> weekMap = new EnumMap<>(DayOfWeek.class);
@@ -971,12 +1190,15 @@ public class StatsService {
 							currentTotal.getOrDefault("SPARES", BigDecimal.ZERO).add(job.getTotalSparesValue()));
 					currentTotal.put("SERVICE",
 							currentTotal.getOrDefault("SERVICE", BigDecimal.ZERO).add(job.getTotalServiceValue()));
-//					currentTotal.put("CONSUMABLES", currentTotal.getOrDefault("CONSUMABLES", BigDecimal.ZERO).add(
-//							job.getTotalConsumablesValue() != null ? job.getTotalConsumablesValue() : BigDecimal.ZERO));
-//					currentTotal.put("EXTERNALWORK",
-//							currentTotal.getOrDefault("EXTERNALWORK", BigDecimal.ZERO)
-//									.add(job.getTotalExternalWorkValue() != null ? job.getTotalExternalWorkValue()
-//											: BigDecimal.ZERO));
+					// currentTotal.put("CONSUMABLES", currentTotal.getOrDefault("CONSUMABLES",
+					// BigDecimal.ZERO).add(
+					// job.getTotalConsumablesValue() != null ? job.getTotalConsumablesValue() :
+					// BigDecimal.ZERO));
+					// currentTotal.put("EXTERNALWORK",
+					// currentTotal.getOrDefault("EXTERNALWORK", BigDecimal.ZERO)
+					// .add(job.getTotalExternalWorkValue() != null ?
+					// job.getTotalExternalWorkValue()
+					// : BigDecimal.ZERO));
 
 					yearlyJobCards.put(month, currentTotal);
 				}
@@ -1013,19 +1235,21 @@ public class StatsService {
 			JobCardReport jobCardReport = null;
 			if (jobSpares != null) {
 				jobCardReport = JobCardReport.builder().jobId(jobCard.getJobId())
-//						.invoiceId(jobCard.getInvoiceId())
+						// .invoiceId(jobCard.getInvoiceId())
 						.jobStatus(jobCard.getJobStatus()).jobCloseDate(jobCard.getJobCloseDate())
 						.vehicleRegNo(jobCard.getVehicleRegNo()).totalSparesValue(jobSpares.getTotalSparesValue())
 						.totalConsumablesValue(
 								jobSpares.getTotalServiceValue() != null ? jobSpares.getTotalServiceValue()
 										: BigDecimal.ZERO)
-//						.totalExternalWorkValue(jobSpares.getTotalExternalWorkValue() != null ? jobSpares.getTotalExternalWorkValue() : BigDecimal.ZERO)
-//						.totalLabourValue(jobSpares.getTotalLabourValue() != null ? jobSpares.getTotalLabourValue() : BigDecimal.ZERO)
+						// .totalExternalWorkValue(jobSpares.getTotalExternalWorkValue() != null ?
+						// jobSpares.getTotalExternalWorkValue() : BigDecimal.ZERO)
+						// .totalLabourValue(jobSpares.getTotalLabourValue() != null ?
+						// jobSpares.getTotalLabourValue() : BigDecimal.ZERO)
 						.grandTotal(jobSpares.getGrandTotal() != null ? jobSpares.getGrandTotal() : BigDecimal.ZERO)
 						.build();
 			} else {
 				jobCardReport = JobCardReport.builder().jobId(jobCard.getJobId())
-//						.invoiceId(jobCard.getInvoiceId())
+						// .invoiceId(jobCard.getInvoiceId())
 						.jobStatus(jobCard.getJobStatus()).jobCloseDate(jobCard.getJobCloseDate())
 						.vehicleRegNo(jobCard.getVehicleRegNo()).build();
 			}

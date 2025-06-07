@@ -1526,9 +1526,9 @@ public class JobCardService {
 		data.put("estimateNo", estimate.getEstimateId());
 		data.put("date", estimate.getBillCloseDate());
 		data.put("mode", paymentMode);
-		data.put("nextFreeCheckKms", jobCard.getKiloMeters() + 1500);
+		data.put("nextFreeCheckKms", jobCard.getKiloMeters() != null ? jobCard.getKiloMeters() + 1500 : null);
 		data.put("vehicle", jobCard.getVehicleName());
-		data.put("nextServiceKms", jobCard.getKiloMeters() + 3000);
+		data.put("nextServiceKms", jobCard.getKiloMeters() != null ? jobCard.getKiloMeters() + 3000 : null);
 
 		data.put("netAmount", estimate.getGrandTotal());
 		data.put("amountInWords", NumberToWordsConverter.convert(estimate.getGrandTotal()));
