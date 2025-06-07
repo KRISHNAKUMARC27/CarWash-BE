@@ -33,9 +33,10 @@ build/
 
 # Ignore all files in static directory
 /src/main/resources/static/**
-
+/target/classes/static/**
 # Except keep the directory itself
-!/src/main/resources/static/
+!/src/main/resources/static/.gitkeep
+!/target/classes/static/.gitkeep
 
 
 ### VS Code ###
