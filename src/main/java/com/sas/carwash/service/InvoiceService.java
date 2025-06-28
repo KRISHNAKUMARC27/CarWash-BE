@@ -24,6 +24,7 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.Payments;
 import com.sas.carwash.model.CreditPayment;
+import com.sas.carwash.model.FastJobCardRecord;
 import com.sas.carwash.model.MultiCreditPayment;
 import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.InvoiceRepository;
@@ -37,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 public class InvoiceService {
 
 	private final InvoiceRepository invoiceRepository;
-	private final JobCardService jobCardService;
+	private final UtilService utilService;
     private final SpringTemplateEngine templateEngine;
 	private final PaymentsService paymentsService;
     
@@ -55,19 +56,19 @@ public class InvoiceService {
 	}
 
 	public Invoice save(Invoice invoice) throws Exception {
-		JobCard jobCard = jobCardService.findById(invoice.getJobObjId());
+		JobCard jobCard = utilService.findById(invoice.getJobObjId());
 		if (jobCard == null) {
 			throw new Exception("JobCard cannot be null");
 		}
 		if (jobCard.getEstimateObjId() != null) {
 			throw new Exception("Bill already generated");
 		}
-		JobSpares jobSpares = jobCardService.findByIdJobSpares(invoice.getJobObjId());
+		JobSpares jobSpares = utilService.findByIdJobSpares(invoice.getJobObjId());
 		if (jobSpares == null) {
 			throw new Exception("JobSpares cannot be null");
 		}
 		if (invoice.getId() == null) {
-			invoice.setInvoiceId(jobCardService.getNextSequenceForNewSequence("invoiceId"));
+			invoice.setInvoiceId(utilService.getNextSequenceForNewSequence("invoiceId"));
 			invoice.setBillCloseDate(LocalDateTime.now());
 		}
 
@@ -144,14 +145,37 @@ public class InvoiceService {
 
 		invoice = invoiceRepository.save(invoice);
 		jobCard.setInvoiceObjId(invoice.getId());
-		jobCardService.simpleSave(jobCard);
+		utilService.simpleSave(jobCard);
 		jobSpares.setInvoiceObjId(invoice.getId());
-		jobCardService.simpleSaveJobSpares(jobSpares);
+		utilService.simpleSaveJobSpares(jobSpares);
 		return invoice;
 	}
 
 	public Invoice findByJobObjId(String id) {
 		return invoiceRepository.findByJobObjId(id);
+	}
+
+	public Invoice saveFastInvoice(JobCard jobCard, JobSpares jobSpares, FastJobCardRecord fastJobCard) throws Exception {
+		Invoice invoice = Invoice.builder()
+				.jobId(jobCard.getJobId())
+				.ownerName(jobCard.getOwnerName())
+				.ownerPhoneNumber(jobCard.getOwnerPhoneNumber())
+				.vehicleRegNo(jobCard.getVehicleRegNo())
+				.vehicleName(jobCard.getVehicleName())
+				.grandTotal(jobSpares.getGrandTotalWithGST())
+				.jobObjId(jobSpares.getId())
+				.paymentSplitList(List.of(PaymentSplit.builder()
+						.paymentAmount(jobSpares.getGrandTotalWithGST())
+						.paymentMode(fastJobCard.paymentMode())
+						.flag("ADD")
+						.build()))
+				.creditPaymentList(new ArrayList<>())
+				.pendingAmount(BigDecimal.ZERO)
+				.creditFlag(false)
+				.creditSettledFlag(false)
+				.build();
+
+		return save(invoice);
 	}
 
 	public Map<String, String> multiCreditSettlement(MultiCreditPayment multiCreditPayment) throws Exception {

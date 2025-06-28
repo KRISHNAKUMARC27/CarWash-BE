@@ -24,6 +24,7 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.Payments;
 import com.sas.carwash.model.CreditPayment;
+import com.sas.carwash.model.FastJobCardRecord;
 import com.sas.carwash.model.MultiCreditPayment;
 import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;
@@ -37,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 public class EstimateService {
 
 	private final EstimateRepository estimateRepository;
-	private final JobCardService jobCardService;
+	private final UtilService utilService;
 	private final SpringTemplateEngine templateEngine;
 	private final PaymentsService paymentsService;
 
@@ -55,19 +56,19 @@ public class EstimateService {
 	}
 
 	public Estimate save(Estimate estimate) throws Exception {
-		JobCard jobCard = jobCardService.findById(estimate.getJobObjId());
+		JobCard jobCard = utilService.findById(estimate.getJobObjId());
 		if (jobCard == null) {
 			throw new Exception("JobCard cannot be null");
 		}
 		if (jobCard.getInvoiceObjId() != null) {
 			throw new Exception("Bill already generated");
 		}
-		JobSpares jobSpares = jobCardService.findByIdJobSpares(estimate.getJobObjId());
+		JobSpares jobSpares = utilService.findByIdJobSpares(estimate.getJobObjId());
 		if (jobSpares == null) {
 			throw new Exception("JobSpares cannot be null");
 		}
 		if (estimate.getId() == null) {
-			estimate.setEstimateId(jobCardService.getNextSequenceForNewSequence("estimateId"));
+			estimate.setEstimateId(utilService.getNextSequenceForNewSequence("estimateId"));
 			estimate.setBillCloseDate(LocalDateTime.now());
 		}
 		for (PaymentSplit split : estimate.getPaymentSplitList()) {
@@ -143,14 +144,37 @@ public class EstimateService {
 
 		estimate = estimateRepository.save(estimate);
 		jobCard.setEstimateObjId(estimate.getId());
-		jobCardService.simpleSave(jobCard);
+		utilService.simpleSave(jobCard);
 		jobSpares.setEstimateObjId(estimate.getId());
-		jobCardService.simpleSaveJobSpares(jobSpares);
+		utilService.simpleSaveJobSpares(jobSpares);
 		return estimate;
 	}
 
 	public Estimate findByJobObjId(String id) {
 		return estimateRepository.findByJobObjId(id);
+	}
+
+	public Estimate saveFastEstimate(JobCard jobCard, JobSpares jobSpares, FastJobCardRecord fastJobCard) throws Exception {
+		Estimate estimate = Estimate.builder()
+				.jobId(jobCard.getJobId())
+				.ownerName(jobCard.getOwnerName())
+				.ownerPhoneNumber(jobCard.getOwnerPhoneNumber())
+				.vehicleRegNo(jobCard.getVehicleRegNo())
+				.vehicleName(jobCard.getVehicleName())
+				.grandTotal(jobSpares.getGrandTotal())
+				.jobObjId(jobSpares.getId())
+				.paymentSplitList(List.of(PaymentSplit.builder()
+						.paymentAmount(jobSpares.getGrandTotal())
+						.paymentMode(fastJobCard.paymentMode())
+						.flag("ADD")
+						.build()))
+				.creditPaymentList(new ArrayList<>())
+				.pendingAmount(BigDecimal.ZERO)
+				.creditFlag(false)
+				.creditSettledFlag(false)
+				.build();
+
+		return save(estimate);
 	}
 
 	public Map<String, String> multiCreditSettlement(MultiCreditPayment multiCreditPayment) throws Exception {

@@ -10,6 +10,8 @@ public record FastJobCardRecord(String ownerName,
         String vehicleRegNo,
         String vehicleName,
         Integer kiloMeters,
+        String billType,
+        String paymentMode,
         List<JobSparesInfo> jobSparesInfo,
         List<JobSparesInfo> jobServiceInfo) {
 

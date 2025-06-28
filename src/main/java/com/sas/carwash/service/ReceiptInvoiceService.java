@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ReceiptInvoiceService {
 
 	private final ReceiptInvoiceRepository receiptRepository;
-	private final JobCardService jobCardService;
+	private final UtilService utilService;
 	private final PdfUtils pdfUtils;
 
 	public List<?> findAll() throws Exception {
@@ -40,7 +40,7 @@ public class ReceiptInvoiceService {
 	public ReceiptInvoice save(ReceiptInvoice receipt) throws Exception {
 
 		if (receipt.getId() == null) {
-			receipt.setReceiptId(jobCardService.getNextSequenceForNewSequence("receiptId"));
+			receipt.setReceiptId(utilService.getNextSequenceForNewSequence("receiptId"));
 			receipt.setReceiptDate(LocalDateTime.now());
 		}
 

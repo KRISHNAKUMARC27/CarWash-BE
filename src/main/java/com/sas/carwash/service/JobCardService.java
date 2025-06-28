@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -77,6 +75,9 @@ public class JobCardService {
 	private final MongoTemplate mongoTemplate;
 	private final PdfUtils pdfUtils;
 	private final PaymentsService paymentsService;
+	private final EstimateService estimateService;
+	private final InvoiceService invoiceService;
+	private final UtilService utilService;
 
 	@Value("${server.port}")
 	private String serverPort;
@@ -102,77 +103,12 @@ public class JobCardService {
 		return counter.getSequenceValue();
 	}
 
-	public int getNextSequenceForNewSequence(String sequenceName) {
-		// Find the counter document and increment its sequence_value atomically
-		Query query = new Query(Criteria.where("_id").is(sequenceName));
-		JobCardCounters counter = mongoTemplate.findOne(query, JobCardCounters.class);
-
-		if (counter == null) {
-			counter = new JobCardCounters();
-			counter.setId(sequenceName);
-			counter.setSequenceValue(1);
-			mongoTemplate.save(counter);
-		} else {
-			Query updateQuery = new Query(Criteria.where("_id").is(sequenceName));
-			Update update = new Update().inc("sequenceValue", 1);
-			FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
-			counter = mongoTemplate.findAndModify(updateQuery, update, options, JobCardCounters.class);
-			if (counter == null) {
-				throw new RuntimeException("Error incrementing sequence for " + sequenceName);
-			}
-		}
-
-		return counter.getSequenceValue();
-	}
-
-	public int getNextJobCardIdSequenceAsInteger(String sequenceName) {
-
-		int currentYearMonth = Integer.parseInt(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM")));
-
-		Query query = new Query(Criteria.where("_id").is(sequenceName));
-		JobCardCounters counter = mongoTemplate.findOne(query, JobCardCounters.class);
-
-		if (counter == null) {
-			counter = new JobCardCounters();
-			counter.setId(sequenceName);
-			counter.setYearMonth(currentYearMonth);
-			counter.setSequenceValue(1);
-			mongoTemplate.save(counter);
-		} else if (counter.getYearMonth() != currentYearMonth) {
-			counter.setYearMonth(currentYearMonth);
-			counter.setSequenceValue(1);
-			mongoTemplate.save(counter);
-		} else {
-			Query updateQuery = new Query(Criteria.where("_id").is(sequenceName));
-			Update update = new Update().inc("sequenceValue", 1);
-			FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
-			counter = mongoTemplate.findAndModify(updateQuery, update, options, JobCardCounters.class);
-			if (counter == null) {
-				throw new RuntimeException("Error incrementing sequence for " + sequenceName);
-			}
-		}
-
-		// Concatenate yearMonth and sequenceValue
-		int result = Integer.parseInt(currentYearMonth + String.format("%03d", counter.getSequenceValue()));
-
-		// Return the final result as an integer
-		return result;
-	}
-
 	public List<?> findAll() {
 		return jobCardRepository.findAllByOrderByIdDesc();
 	}
 
-	public JobCard findById(String id) {
-		return jobCardRepository.findById(id).orElse(null);
-	}
-
-	public JobCard simpleSave(JobCard jobCard) {
-		return jobCardRepository.save(jobCard);
-	}
-
 	public JobCard save(JobCard jobCard) {
-		jobCard.setJobId(getNextJobCardIdSequenceAsInteger("jobCardId"));
+		jobCard.setJobId(utilService.getNextJobCardIdSequenceAsInteger("jobCardId"));
 		jobCard.setJobCreationDate(LocalDateTime.now());
 		if (jobCard.getKiloMeters() != null) {
 			jobCard.setNextFreeCheckKms(jobCard.getKiloMeters() + 1500);
@@ -182,14 +118,6 @@ public class JobCardService {
 
 		sendNotifications("JobCard opened - " + jobCard.getJobId(), jobCard.toString());
 		return jobCard;
-	}
-
-	public JobSpares findByIdJobSpares(String id) {
-		return jobSparesRepository.findById(id).orElse(null);
-	}
-
-	public JobSpares simpleSaveJobSpares(JobSpares jobSpares) {
-		return jobSparesRepository.save(jobSpares);
 	}
 
 	public List<?> findAllByJobStatus(String status) {
@@ -1355,7 +1283,8 @@ public class JobCardService {
 
 	public JobVehiclePhotos getZipPhotos(String id) {
 		// TODO Auto-generated method stub
-		return jobVehiclePhotosRepository.findById(id).orElseThrow(() -> new RuntimeException("Photos not found for id " + id));
+		return jobVehiclePhotosRepository.findById(id)
+				.orElseThrow(() -> new RuntimeException("Photos not found for id " + id));
 	}
 
 	@Scheduled(cron = "0 0 2 * * ?") // Runs daily at 2 AM
@@ -1656,9 +1585,13 @@ public class JobCardService {
 			estimate.setCreditFlag(true);
 			estimate.setCreditSettledFlag(false);
 
-			// This is a bill reopen scenario. The flag is ADD because there is payments with credit mode are ignored for any flags. 
-			// At UI side this extra amount goes as credit with add flag, but user will change it to CASH or UPI etc and saved with ADD flag to include as new payment
-			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD").build();
+			// This is a bill reopen scenario. The flag is ADD because there is payments
+			// with credit mode are ignored for any flags.
+			// At UI side this extra amount goes as credit with add flag, but user will
+			// change it to CASH or UPI etc and saved with ADD flag to include as new
+			// payment
+			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
+					.build();
 			List<PaymentSplit> splitList = estimate.getPaymentSplitList();
 			if (splitList != null && !splitList.isEmpty()) {
 				splitList.add(split);
@@ -1684,13 +1617,13 @@ public class JobCardService {
 					overpaid = overpaid.subtract(amt);
 					cpIterator.remove(); // remove entire payment
 
-					//inform payment service
+					// inform payment service
 					paymentsService.deleteById(cp.getPaymentId());
 				} else {
 					cp.setAmount(amt.subtract(overpaid));
 					overpaid = BigDecimal.ZERO;
 
-					//inform payment service
+					// inform payment service
 					Payments payments = paymentsService.findById(cp.getPaymentId());
 					payments.setPaymentAmount(cp.getAmount());
 					payments.setPaymentMode(cp.getPaymentMode());
@@ -1713,13 +1646,13 @@ public class JobCardService {
 					overpaid = overpaid.subtract(amt);
 					psIterator.remove();
 
-					//inform payment service
+					// inform payment service
 					paymentsService.deleteById(ps.getPaymentId());
 				} else {
 					ps.setPaymentAmount(amt.subtract(overpaid));
 					overpaid = BigDecimal.ZERO;
 
-					//inform payment service
+					// inform payment service
 					Payments payments = paymentsService.findById(ps.getPaymentId());
 					payments.setPaymentAmount(ps.getPaymentAmount());
 					payments.setPaymentMode(ps.getPaymentMode());
@@ -1790,9 +1723,13 @@ public class JobCardService {
 			// Mark as credit
 			invoice.setCreditFlag(true);
 			invoice.setCreditSettledFlag(false);
-			// This is a bill reopen scenario. The flag is ADD because there is payments with credit mode are ignored for any flags. 
-			// At UI side this extra amount goes as credit with add flag, but user will change it to CASH or UPI etc and saved with ADD flag to include as new payment
-			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD").build();
+			// This is a bill reopen scenario. The flag is ADD because there is payments
+			// with credit mode are ignored for any flags.
+			// At UI side this extra amount goes as credit with add flag, but user will
+			// change it to CASH or UPI etc and saved with ADD flag to include as new
+			// payment
+			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
+					.build();
 			List<PaymentSplit> splitList = invoice.getPaymentSplitList();
 			if (splitList != null && !splitList.isEmpty()) {
 				splitList.add(split);
@@ -1818,13 +1755,13 @@ public class JobCardService {
 					overpaid = overpaid.subtract(amt);
 					cpIterator.remove(); // remove entire payment
 
-					//inform payment service
+					// inform payment service
 					paymentsService.deleteById(cp.getPaymentId());
 				} else {
 					cp.setAmount(amt.subtract(overpaid));
 					overpaid = BigDecimal.ZERO;
 
-					//inform payment service
+					// inform payment service
 					Payments payments = paymentsService.findById(cp.getPaymentId());
 					payments.setPaymentAmount(cp.getAmount());
 					payments.setPaymentMode(cp.getPaymentMode());
@@ -1847,13 +1784,13 @@ public class JobCardService {
 					overpaid = overpaid.subtract(amt);
 					psIterator.remove();
 
-					//inform payment service
+					// inform payment service
 					paymentsService.deleteById(ps.getPaymentId());
 				} else {
 					ps.setPaymentAmount(amt.subtract(overpaid));
 					overpaid = BigDecimal.ZERO;
 
-					//inform payment service
+					// inform payment service
 					Payments payments = paymentsService.findById(ps.getPaymentId());
 					payments.setPaymentAmount(ps.getPaymentAmount());
 					payments.setPaymentMode(ps.getPaymentMode());
@@ -1906,8 +1843,16 @@ public class JobCardService {
 				.jobSparesInfo(fastJobCard.jobSparesInfo())
 				.build();
 
-		updateJobSpares(jobSpares);
+		jobSpares = updateJobSpares(jobSpares);
 
+		jobCard.setJobStatus("CLOSED");
+		jobCard = updateJobStatus(jobCard);
+
+		if (fastJobCard.billType().equals("ESTIMATE")) {
+			estimateService.saveFastEstimate(jobCard, jobSpares, fastJobCard);
+		} else if (fastJobCard.billType().equals("INVOICE")){
+			invoiceService.saveFastInvoice(jobCard, jobSpares, fastJobCard);
+		}
 		return jobCard;
 	}
 
