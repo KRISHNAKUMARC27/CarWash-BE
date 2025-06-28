@@ -28,4 +28,5 @@ public class Payments implements Serializable {
     private String category;   //INVOICE OR ESTIMATE
     private Integer categoryFieldId;  //invoice or estimate id corresponding to the payment
     private boolean isCreditPayment;  //this payment is for settling the credit ?? 
+	//private String paymentModified; //this can during jobcard reopen and some entries are removed, modified. TODO
 }

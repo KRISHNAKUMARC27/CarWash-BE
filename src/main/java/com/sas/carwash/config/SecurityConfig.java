@@ -58,7 +58,7 @@ public class SecurityConfig {
 								"/expense/**",
 								"/financials/**")
 						.permitAll()
-						.requestMatchers("/auth/**", "/user/signup/**", "/jobCard/getPhotos/**",
+						.requestMatchers("/auth/**", "/user/signup/**", "/user/role/**","/jobCard/getPhotos/**",
 								"/jobCard/getPhotoUrl/**")
 						.permitAll()
 						.requestMatchers("/admin/**").hasRole("ADMIN").anyRequest().authenticated()

@@ -41,6 +41,7 @@ import com.sas.carwash.entity.JobCardCounters;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.JobSparesInfo;
 import com.sas.carwash.entity.JobVehiclePhotos;
+import com.sas.carwash.entity.Payments;
 import com.sas.carwash.entity.ServiceInventory;
 import com.sas.carwash.entity.SparesInventory;
 import com.sas.carwash.model.CreditPayment;
@@ -75,6 +76,7 @@ public class JobCardService {
 	private final EstimateRepository estimateRepository;
 	private final MongoTemplate mongoTemplate;
 	private final PdfUtils pdfUtils;
+	private final PaymentsService paymentsService;
 
 	@Value("${server.port}")
 	private String serverPort;
@@ -1654,7 +1656,9 @@ public class JobCardService {
 			estimate.setCreditFlag(true);
 			estimate.setCreditSettledFlag(false);
 
-			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").build();
+			// This is a bill reopen scenario. The flag is ADD because there is payments with credit mode are ignored for any flags. 
+			// At UI side this extra amount goes as credit with add flag, but user will change it to CASH or UPI etc and saved with ADD flag to include as new payment
+			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD").build();
 			List<PaymentSplit> splitList = estimate.getPaymentSplitList();
 			if (splitList != null && !splitList.isEmpty()) {
 				splitList.add(split);
@@ -1679,9 +1683,18 @@ public class JobCardService {
 				if (overpaid.compareTo(amt) >= 0) {
 					overpaid = overpaid.subtract(amt);
 					cpIterator.remove(); // remove entire payment
+
+					//inform payment service
+					paymentsService.deleteById(cp.getPaymentId());
 				} else {
 					cp.setAmount(amt.subtract(overpaid));
 					overpaid = BigDecimal.ZERO;
+
+					//inform payment service
+					Payments payments = paymentsService.findById(cp.getPaymentId());
+					payments.setPaymentAmount(cp.getAmount());
+					payments.setPaymentMode(cp.getPaymentMode());
+					paymentsService.save(payments);
 				}
 			}
 
@@ -1699,9 +1712,18 @@ public class JobCardService {
 				if (overpaid.compareTo(amt) >= 0) {
 					overpaid = overpaid.subtract(amt);
 					psIterator.remove();
+
+					//inform payment service
+					paymentsService.deleteById(ps.getPaymentId());
 				} else {
 					ps.setPaymentAmount(amt.subtract(overpaid));
 					overpaid = BigDecimal.ZERO;
+
+					//inform payment service
+					Payments payments = paymentsService.findById(ps.getPaymentId());
+					payments.setPaymentAmount(ps.getPaymentAmount());
+					payments.setPaymentMode(ps.getPaymentMode());
+					paymentsService.save(payments);
 				}
 			}
 
@@ -1768,7 +1790,9 @@ public class JobCardService {
 			// Mark as credit
 			invoice.setCreditFlag(true);
 			invoice.setCreditSettledFlag(false);
-			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").build();
+			// This is a bill reopen scenario. The flag is ADD because there is payments with credit mode are ignored for any flags. 
+			// At UI side this extra amount goes as credit with add flag, but user will change it to CASH or UPI etc and saved with ADD flag to include as new payment
+			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD").build();
 			List<PaymentSplit> splitList = invoice.getPaymentSplitList();
 			if (splitList != null && !splitList.isEmpty()) {
 				splitList.add(split);
@@ -1793,9 +1817,18 @@ public class JobCardService {
 				if (overpaid.compareTo(amt) >= 0) {
 					overpaid = overpaid.subtract(amt);
 					cpIterator.remove(); // remove entire payment
+
+					//inform payment service
+					paymentsService.deleteById(cp.getPaymentId());
 				} else {
 					cp.setAmount(amt.subtract(overpaid));
 					overpaid = BigDecimal.ZERO;
+
+					//inform payment service
+					Payments payments = paymentsService.findById(cp.getPaymentId());
+					payments.setPaymentAmount(cp.getAmount());
+					payments.setPaymentMode(cp.getPaymentMode());
+					paymentsService.save(payments);
 				}
 			}
 
@@ -1813,9 +1846,18 @@ public class JobCardService {
 				if (overpaid.compareTo(amt) >= 0) {
 					overpaid = overpaid.subtract(amt);
 					psIterator.remove();
+
+					//inform payment service
+					paymentsService.deleteById(ps.getPaymentId());
 				} else {
 					ps.setPaymentAmount(amt.subtract(overpaid));
 					overpaid = BigDecimal.ZERO;
+
+					//inform payment service
+					Payments payments = paymentsService.findById(ps.getPaymentId());
+					payments.setPaymentAmount(ps.getPaymentAmount());
+					payments.setPaymentMode(ps.getPaymentMode());
+					paymentsService.save(payments);
 				}
 			}
 
