@@ -2,8 +2,6 @@ package com.sas.carwash.service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,7 +29,6 @@ import java.util.Date;
 import java.util.Calendar;
 
 import org.springframework.scheduling.annotation.Scheduled;
-import com.sas.carwash.email.EmailService;
 import com.sas.carwash.entity.Estimate;
 import com.sas.carwash.entity.Invoice;
 import com.sas.carwash.entity.JobCard;
@@ -69,7 +66,6 @@ public class JobCardService {
 	private final ServiceInventoryRepository serviceInventoryRepository;
 	private final SparesInventoryRepository sparesInventoryRepository;
 	private final SparesService sparesService;
-	private final EmailService emailService;
 	private final InvoiceRepository invoiceRepository;
 	private final EstimateRepository estimateRepository;
 	private final MongoTemplate mongoTemplate;
@@ -82,9 +78,6 @@ public class JobCardService {
 	@Value("${server.port}")
 	private String serverPort;
 
-	private String[] emailRecepients = { "krishnakumarc27@gmail.com" };
-
-	private Integer rowsPerPage = 20;
 	float rowHeight = 18f;
 
 	public int getNextSequence(String sequenceName) {
@@ -923,7 +916,6 @@ public class JobCardService {
 		// ByteArrayResource(outputStream.toByteArray());
 		// String filename = "JobCard_" + jobCard.getJobId() + "_" +
 		// jobCard.getVehicleRegNo() + ".pdf";
-		String filename = "";
 		ByteArrayResource resource = new ByteArrayResource(null);
 		HttpHeaders headers = new HttpHeaders();
 		headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=");
@@ -974,18 +966,19 @@ public class JobCardService {
 	// }
 	// }
 
-	private String stringNullCheck(Object str) {
-		if (str == null)
-			return "";
-		return String.valueOf(str);
-	}
+	// private String stringNullCheck(Object str) {
+	// if (str == null)
+	// return "";
+	// return String.valueOf(str);
+	// }
 
-	private String createDateString(LocalDateTime date) {
-		if (date != null) {
-			return date.getDayOfMonth() + "/" + date.getMonthValue() + "/" + date.getYear();
-		}
-		return "";
-	}
+	// private String createDateString(LocalDateTime date) {
+	// if (date != null) {
+	// return date.getDayOfMonth() + "/" + date.getMonthValue() + "/" +
+	// date.getYear();
+	// }
+	// return "";
+	// }
 
 	// private String removeJobSparesBracketFieldsAndNullCheck(Object str) {
 	// if (str == null)
@@ -1850,7 +1843,7 @@ public class JobCardService {
 
 		if (fastJobCard.billType().equals("ESTIMATE")) {
 			estimateService.saveFastEstimate(jobCard, jobSpares, fastJobCard);
-		} else if (fastJobCard.billType().equals("INVOICE")){
+		} else if (fastJobCard.billType().equals("INVOICE")) {
 			invoiceService.saveFastInvoice(jobCard, jobSpares, fastJobCard);
 		}
 		return jobCard;
@@ -1858,16 +1851,16 @@ public class JobCardService {
 
 	public Map<String, String> getPhotoUrl(String id) {
 		Map<String, String> result = new HashMap<>();
-		try {
-			// Get the local host address
-			String ipAddress = InetAddress.getLocalHost().getHostAddress();
-			// Construct the URL
-			String url = "https://" + "rhineconstruction.in" + ":" + serverPort + "/jobCard/getPhotos/" + id;
-			result.put("url", url);
-		} catch (UnknownHostException e) {
-			// Handle the exception if the IP address cannot be determined
-			throw new RuntimeException("Unable to determine the host IP address", e);
-		}
+		// try {
+		// Get the local host address
+		// String ipAddress = InetAddress.getLocalHost().getHostAddress();
+		// Construct the URL
+		String url = "https://" + "rhineconstruction.in" + ":" + serverPort + "/jobCard/getPhotos/" + id;
+		result.put("url", url);
+		// } catch (UnknownHostException e) {
+		// // Handle the exception if the IP address cannot be determined
+		// throw new RuntimeException("Unable to determine the host IP address", e);
+		// }
 		return result;
 	}
 

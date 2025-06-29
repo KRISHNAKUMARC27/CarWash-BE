@@ -3,9 +3,7 @@ package com.sas.carwash.entity;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-
 import org.springframework.data.annotation.Id;
-
 import lombok.Builder;
 import lombok.Data;
 
