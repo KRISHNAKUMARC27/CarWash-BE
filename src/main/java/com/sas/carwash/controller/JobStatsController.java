@@ -18,9 +18,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JobStatsController {
 
-    private final JobStatsService jobStatsService;
+	private final JobStatsService jobStatsService;
 
-    	//REPORTING
+	// REPORTING
 	@GetMapping("/service/report/daily/{date}")
 	public Map<String, Object> getDailyJobServiceStats(@PathVariable String date) {
 		return jobStatsService.getDailyJobServiceStats(LocalDate.parse(date));
@@ -32,18 +32,46 @@ public class JobStatsController {
 	}
 
 	@GetMapping("/service/report/monthly/{year}/{month}")
-	public Map<String, Object> getMonthlyExpense(@PathVariable int year, @PathVariable int month) {
+	public Map<String, Object> getMonthlyJobServiceStats(@PathVariable int year, @PathVariable int month) {
 		return jobStatsService.getMonthlyJobServiceStats(year, month);
 	}
 
 	@GetMapping("/service/report/yearly/{year}")
-	public Map<String, Object> getYearlyExpense(@PathVariable int year) {
+	public Map<String, Object> getYearlyJobServiceStats(@PathVariable int year) {
 		return jobStatsService.getYearlyJobServiceStats(year);
 	}
 
 	@GetMapping("/service/report/daterange")
-	public Map<String, Object> getJobServiceStatsByDateRange(@RequestParam String startDate, @RequestParam String endDate) {
+	public Map<String, Object> getJobServiceStatsByDateRange(@RequestParam String startDate,
+			@RequestParam String endDate) {
 		return jobStatsService.getJobServiceStatsByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
 	}
-    
+
+	// SPARES Stats
+	@GetMapping("/spares/report/daily/{date}")
+	public Map<String, Object> getDailyJobSparesStats(@PathVariable String date) {
+		return jobStatsService.getDailyJobSparesStats(LocalDate.parse(date));
+	}
+
+	@GetMapping("/spares/report/weekly/{year}/{week}")
+	public Map<String, Object> getWeeklyJobSparesStats(@PathVariable int year, @PathVariable int week) {
+		return jobStatsService.getWeeklyJobSparesStats(year, week);
+	}
+
+	@GetMapping("/spares/report/monthly/{year}/{month}")
+	public Map<String, Object> getMonthlyJobSparesStats(@PathVariable int year, @PathVariable int month) {
+		return jobStatsService.getMonthlyJobSparesStats(year, month);
+	}
+
+	@GetMapping("/spares/report/yearly/{year}")
+	public Map<String, Object> getYearlyJobSparesStats(@PathVariable int year) {
+		return jobStatsService.getYearlyJobSparesStats(year);
+	}
+
+	@GetMapping("/spares/report/daterange")
+	public Map<String, Object> getJobSparesStatsByDateRange(@RequestParam String startDate,
+			@RequestParam String endDate) {
+		return jobStatsService.getJobSparesStatsByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
+	}
+
 }

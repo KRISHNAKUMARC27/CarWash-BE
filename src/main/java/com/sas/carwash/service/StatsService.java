@@ -1119,7 +1119,10 @@ public class StatsService {
 				if (jobDate.getYear() == currentYear) {
 					int month = jobDate.getMonthValue();
 					BigDecimal currentTotal = yearlyJobCards.get(month);
-					yearlyJobCards.put(month, currentTotal.add(job.getGrandTotal()));
+					if(job.getEstimateObjId() != null)
+					    yearlyJobCards.put(month, currentTotal.add(job.getGrandTotal()));
+					else if(job.getInvoiceObjId() != null)
+						yearlyJobCards.put(month, currentTotal.add(job.getGrandTotalWithGST()));
 				}
 			}
 		}
@@ -1186,10 +1189,19 @@ public class StatsService {
 					int month = jobDate.getMonthValue();
 
 					Map<String, BigDecimal> currentTotal = yearlyJobCards.get(month);
-					currentTotal.put("SPARES",
-							currentTotal.getOrDefault("SPARES", BigDecimal.ZERO).add(job.getTotalSparesValue()));
-					currentTotal.put("SERVICE",
-							currentTotal.getOrDefault("SERVICE", BigDecimal.ZERO).add(job.getTotalServiceValue()));
+					if (job.getEstimateObjId() != null) {
+						currentTotal.put("SPARES",
+								currentTotal.getOrDefault("SPARES", BigDecimal.ZERO).add(job.getTotalSparesValue()));
+						currentTotal.put("SERVICE",
+								currentTotal.getOrDefault("SERVICE", BigDecimal.ZERO).add(job.getTotalServiceValue()));
+					} else if (job.getInvoiceObjId() != null) {
+						currentTotal.put("SPARES",
+								currentTotal.getOrDefault("SPARES", BigDecimal.ZERO)
+										.add(job.getTotalSparesValueWithGST()));
+						currentTotal.put("SERVICE",
+								currentTotal.getOrDefault("SERVICE", BigDecimal.ZERO)
+										.add(job.getTotalServiceValueWithGST()));
+					}
 					// currentTotal.put("CONSUMABLES", currentTotal.getOrDefault("CONSUMABLES",
 					// BigDecimal.ZERO).add(
 					// job.getTotalConsumablesValue() != null ? job.getTotalConsumablesValue() :
