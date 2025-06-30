@@ -11,10 +11,12 @@ D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\RoleRepositor
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\config\CORSFilter.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\DepartmentRepository.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\CreditPayment.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\utils\Utils.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\ReceiptEstimateRepository.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\utils\PdfUtils.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\Invoice.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\service\JobCardService.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\controller\CustomersStatsController.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\AuthResponse.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\utils\NumberToWordsConverter.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\InvoiceRepository.java
@@ -29,6 +31,7 @@ D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\config\JwtAuthentication
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\FastJobCardRecord.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\ExternalWorkInventoryFilterImpl.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\SparesInventoryFilter.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\service\CustomersStatsService.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\ExpenseCategory.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\controller\StatsController.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\controller\EstimateController.java
@@ -38,6 +41,7 @@ D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\Appointment.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\config\CarWashConfig.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\config\CustomUserDetailsService.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\SparesInventory.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\InfoWrapper.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\Expense.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\ServiceFilter.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\service\AttendanceScheduler.java
@@ -45,11 +49,13 @@ D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\LaborInventor
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\ServiceCategoryRepository.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\Leave.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\ExternalWorkCategory.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\controller\JobStatsController.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\service\ExpenseService.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\controller\ServiceInventoryController.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\SparesCategory.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\service\ServiceInventoryService.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\ServiceInventoryFilter.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\service\UtilService.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\SparesInventoryRepository.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\ServiceCategory.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\controller\InvoiceController.java
@@ -106,6 +112,7 @@ D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\ExpenseCatego
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\SparesCategoryRepository.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\User.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\EmployeeSalaryRepository.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\service\JobStatsService.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\SparesInventoryFilterImpl.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\PaymentSplit.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\DmsApplication.java

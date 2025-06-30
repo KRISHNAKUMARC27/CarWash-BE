@@ -38,11 +38,13 @@ com\sas\carwash\service\AppointmentService.class
 com\sas\carwash\controller\LaborController.class
 com\sas\carwash\entity\LaborCategory$LaborCategoryBuilder.class
 com\sas\carwash\entity\Department.class
+com\sas\carwash\utils\Utils.class
 com\sas\carwash\config\JwtUtil.class
 com\sas\carwash\entity\Payments$PaymentsBuilder.class
 com\sas\carwash\entity\Payments.class
 com\sas\carwash\service\LaborService.class
 com\sas\carwash\config\SecurityConfig.class
+com\sas\carwash\service\CustomersStatsService.class
 com\sas\carwash\service\EmployeeService.class
 com\sas\carwash\service\ExpenseService.class
 com\sas\carwash\repository\ReceiptInvoiceRepository.class
@@ -76,6 +78,7 @@ com\sas\carwash\model\JobCardReport.class
 com\sas\carwash\entity\SparesEvents$SparesEventsBuilder.class
 com\sas\carwash\service\SparesService.class
 com\sas\carwash\repository\EmployeeSalaryRepository.class
+com\sas\carwash\controller\CustomersStatsController.class
 com\sas\carwash\repository\AppointmentRepository.class
 com\sas\carwash\entity\ReceiptEstimate.class
 com\sas\carwash\config\CarWashConfig.class
@@ -95,6 +98,7 @@ com\sas\carwash\entity\LaborInventory$LaborInventoryBuilder.class
 com\sas\carwash\controller\ExpenseController.class
 com\sas\carwash\entity\LaborCategory.class
 com\sas\carwash\entity\ExternalWorkCategory.class
+com\sas\carwash\model\InfoWrapper.class
 com\sas\carwash\repository\LaborCategoryRepository.class
 com\sas\carwash\repository\SparesEventsRepository.class
 com\sas\carwash\controller\PaymentsController.class
@@ -102,6 +106,8 @@ com\sas\carwash\repository\SparesInventoryRepository.class
 com\sas\carwash\repository\EstimateRepository.class
 com\sas\carwash\repository\ExpenseRepository.class
 com\sas\carwash\service\AttendanceScheduler.class
+com\sas\carwash\service\CustomersStatsService$1CustomerRecord.class
+com\sas\carwash\service\UtilService.class
 com\sas\carwash\entity\Estimate.class
 com\sas\carwash\repository\ExternalWorkInventoryFilterImpl.class
 com\sas\carwash\entity\Appointment$AppointmentBuilder.class
@@ -151,7 +157,9 @@ com\sas\carwash\entity\JobCardCounters.class
 com\sas\carwash\config\CORSFilter.class
 com\sas\carwash\controller\ConfigController.class
 com\sas\carwash\repository\PaymentsRepository.class
+com\sas\carwash\controller\JobStatsController.class
 com\sas\carwash\controller\StatsController.class
 com\sas\carwash\entity\Leave$LeaveBuilder.class
 com\sas\carwash\controller\AppointmentController.class
 com\sas\carwash\model\FastJobCardRecord.class
+com\sas\carwash\service\JobStatsService.class
