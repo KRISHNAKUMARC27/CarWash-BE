@@ -11,4 +11,5 @@ import java.util.List;
 public interface AppointmentRepository extends MongoRepository<Appointment, String> {
 
     List<Appointment> findByAppointmentDateTimeBetween(Date startDate, Date endDate);
+    List<Appointment> findAllByOrderByIdDesc();
 }

@@ -2,6 +2,7 @@ package com.sas.carwash.entity;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.annotation.Id;
 
@@ -23,7 +24,7 @@ public class Appointment implements Serializable {
 	private String customerName;
     private String phone;
     private LocalDateTime appointmentDateTime;
-    private String service;
+    private List<String> service;
     private String description;
     private String staffName;
     private String status;
