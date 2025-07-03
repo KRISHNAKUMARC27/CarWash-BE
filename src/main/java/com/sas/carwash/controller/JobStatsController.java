@@ -74,4 +74,31 @@ public class JobStatsController {
 		return jobStatsService.getJobSparesStatsByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
 	}
 
+	// Labour Stats
+	@GetMapping("/labour/report/daily/{date}")
+	public Map<String, Object> getDailyJobLabourStats(@PathVariable String date) {
+		return jobStatsService.getDailyJobLabourStats(LocalDate.parse(date));
+	}
+
+	@GetMapping("/labour/report/weekly/{year}/{week}")
+	public Map<String, Object> getWeeklyJobLabourStats(@PathVariable int year, @PathVariable int week) {
+		return jobStatsService.getWeeklyJobLabourStats(year, week);
+	}
+
+	@GetMapping("/labour/report/monthly/{year}/{month}")
+	public Map<String, Object> getMonthlyJobLabourStats(@PathVariable int year, @PathVariable int month) {
+		return jobStatsService.getMonthlyJobLabourStats(year, month);
+	}
+
+	@GetMapping("/labour/report/yearly/{year}")
+	public Map<String, Object> getYearlyJobLabourStats(@PathVariable int year) {
+		return jobStatsService.getYearlyJobLabourStats(year);
+	}
+
+	@GetMapping("/labour/report/daterange")
+	public Map<String, Object> getJobLabourStatsByDateRange(@RequestParam String startDate,
+			@RequestParam String endDate) {
+		return jobStatsService.getJobLabourStatsByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
+	}
+
 }

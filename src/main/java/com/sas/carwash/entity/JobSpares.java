@@ -20,6 +20,7 @@ public class JobSpares {
 	private LocalDateTime jobCloseDate;
 	private List<JobSparesInfo> jobSparesInfo;
 	private List<JobSparesInfo> jobServiceInfo;
+	private List<JobSparesInfo> jobLabourInfo;
 //	private List<JobSparesInfo> jobConsumablesInfo;
 //	private List<JobSparesInfo> jobLaborInfo;
 //	private List<JobSparesInfo> jobExternalWorkInfo;
@@ -27,6 +28,8 @@ public class JobSpares {
 	private BigDecimal totalSparesValueWithGST;
 	private BigDecimal totalServiceValue;
 	private BigDecimal totalServiceValueWithGST;
+	private BigDecimal totalLabourValue;
+	private BigDecimal totalLabourValueWithGST;
 //	private BigDecimal totalConsumablesValue;
 //	private BigDecimal totalLabourValue;
 //	private BigDecimal totalExternalWorkValue;

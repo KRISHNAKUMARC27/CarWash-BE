@@ -47,6 +47,7 @@ import com.sas.carwash.repository.InvoiceRepository;
 import com.sas.carwash.repository.JobCardRepository;
 import com.sas.carwash.repository.JobSparesRepository;
 import com.sas.carwash.repository.JobVehiclePhotosRepository;
+import com.sas.carwash.repository.LabourInventoryRepository;
 import com.sas.carwash.repository.ServiceInventoryRepository;
 import com.sas.carwash.repository.SparesInventoryRepository;
 import com.sas.carwash.utils.NumberToWordsConverter;
@@ -65,6 +66,7 @@ public class JobCardService {
 	private final JobVehiclePhotosRepository jobVehiclePhotosRepository;
 	private final ServiceInventoryRepository serviceInventoryRepository;
 	private final SparesInventoryRepository sparesInventoryRepository;
+	private final LabourInventoryRepository labourInventoryRepository;
 	private final SparesService sparesService;
 	private final InvoiceRepository invoiceRepository;
 	private final EstimateRepository estimateRepository;
@@ -379,6 +381,7 @@ public class JobCardService {
 					.divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
 			jobSparesInfo.setGstAmount(totalGstAmount);
 		}
+		//TODO FROM HERE
 		for (JobSparesInfo jobSparesInfo : jobSpares.getJobSparesInfo()) {
 			SparesInventory service = sparesInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
 					() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));

@@ -11,7 +11,6 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
 import com.sas.carwash.entity.ServiceInventory;
-import com.sas.carwash.entity.SparesInventory;
 
 @Repository
 public class ServiceInventoryFilterImpl implements ServiceInventoryFilter {
