@@ -104,8 +104,8 @@ public class EmployeeController {
 	}
 
 	@GetMapping("/attendance")
-	public List<?> findAllAttendace() {
-		return employeeService.findAllAttendace();
+	public List<?> findAllAttendance() {
+		return employeeService.findAllAttendance();
 	}
 
 	@GetMapping("/attendance/today")
@@ -113,7 +113,7 @@ public class EmployeeController {
 		return employeeService.findAllAttendaceToday();
 	}
 
-	@PostMapping("/uploadPhotos/{id}")
+	@PostMapping("/attendance/uploadPhotos/{id}")
 	public ResponseEntity<?> uploadPhotos(@RequestParam("file") MultipartFile zipFile, @PathVariable String id) {
 		try {
 			// Save the zip file to MongoDB
@@ -124,7 +124,7 @@ public class EmployeeController {
 		}
 	}
 
-	@GetMapping("/getPhotos/{id}")
+	@GetMapping("/attendance/getPhotos/{id}")
 	public ResponseEntity<?> getPhotos(@PathVariable String id) {
 		try {
 			AttendancePhotos photoDoc = employeeService.getZipPhotos(id);

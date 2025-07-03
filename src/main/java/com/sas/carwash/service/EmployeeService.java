@@ -226,7 +226,7 @@ public class EmployeeService {
 		return 0; // Default if values are missing
 	}
 
-	public List<?> findAllAttendace() {
+	public List<?> findAllAttendance() {
 
 		return attendanceRepository.findAllByOrderByIdDesc();
 	}
