@@ -154,28 +154,28 @@ public class EstimateService {
 		return estimateRepository.findByJobObjId(id);
 	}
 
-	public Estimate saveFastEstimate(JobCard jobCard, JobSpares jobSpares, FastJobCardRecord fastJobCard) throws Exception {
-		Estimate estimate = Estimate.builder()
-				.jobId(jobCard.getJobId())
-				.ownerName(jobCard.getOwnerName())
-				.ownerPhoneNumber(jobCard.getOwnerPhoneNumber())
-				.vehicleRegNo(jobCard.getVehicleRegNo())
-				.vehicleName(jobCard.getVehicleName())
-				.grandTotal(jobSpares.getGrandTotal())
-				.jobObjId(jobSpares.getId())
-				.paymentSplitList(List.of(PaymentSplit.builder()
-						.paymentAmount(jobSpares.getGrandTotal())
-						.paymentMode(fastJobCard.paymentMode())
-						.flag("ADD")
-						.build()))
-				.creditPaymentList(new ArrayList<>())
-				.pendingAmount(BigDecimal.ZERO)
-				.creditFlag(false)
-				.creditSettledFlag(false)
-				.build();
+	// public Estimate saveFastEstimate(JobCard jobCard, JobSpares jobSpares, FastJobCardRecord fastJobCard) throws Exception {
+	// 	Estimate estimate = Estimate.builder()
+	// 			.jobId(jobCard.getJobId())
+	// 			.ownerName(jobCard.getOwnerName())
+	// 			.ownerPhoneNumber(jobCard.getOwnerPhoneNumber())
+	// 			.vehicleRegNo(jobCard.getVehicleRegNo())
+	// 			.vehicleName(jobCard.getVehicleName())
+	// 			.grandTotal(jobSpares.getGrandTotal())
+	// 			.jobObjId(jobSpares.getId())
+	// 			.paymentSplitList(List.of(PaymentSplit.builder()
+	// 					.paymentAmount(jobSpares.getGrandTotal())
+	// 					.paymentMode(fastJobCard.paymentMode())
+	// 					.flag("ADD")
+	// 					.build()))
+	// 			.creditPaymentList(new ArrayList<>())
+	// 			.pendingAmount(BigDecimal.ZERO)
+	// 			.creditFlag(false)
+	// 			.creditSettledFlag(false)
+	// 			.build();
 
-		return save(estimate);
-	}
+	// 	return save(estimate);
+	// }
 
 	public Map<String, String> multiCreditSettlement(MultiCreditPayment multiCreditPayment) throws Exception {
 		Map<String, String> response = new HashMap<>();

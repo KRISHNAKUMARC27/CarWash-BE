@@ -1841,11 +1841,11 @@ public class JobCardService {
 		jobCard.setJobStatus("CLOSED");
 		jobCard = updateJobStatus(jobCard);
 
-		if (fastJobCard.billType().equals("ESTIMATE")) {
-			estimateService.saveFastEstimate(jobCard, jobSpares, fastJobCard);
-		} else if (fastJobCard.billType().equals("INVOICE")) {
-			invoiceService.saveFastInvoice(jobCard, jobSpares, fastJobCard);
-		}
+		// if (fastJobCard.billType().equals("ESTIMATE")) {
+		// 	estimateService.saveFastEstimate(jobCard, jobSpares, fastJobCard);
+		// } else if (fastJobCard.billType().equals("INVOICE")) {
+		// 	invoiceService.saveFastInvoice(jobCard, jobSpares, fastJobCard);
+		// }
 		return jobCard;
 	}
 

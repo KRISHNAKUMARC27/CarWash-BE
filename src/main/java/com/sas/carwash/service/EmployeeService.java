@@ -30,7 +30,6 @@ import com.sas.carwash.entity.AttendancePhotos;
 import com.sas.carwash.entity.Department;
 import com.sas.carwash.entity.Employee;
 import com.sas.carwash.entity.EmployeeSalary;
-import com.sas.carwash.entity.JobVehiclePhotos;
 import com.sas.carwash.entity.Leave;
 import com.sas.carwash.model.AttendanceRecord;
 import com.sas.carwash.repository.AttendancePhotosRepository;

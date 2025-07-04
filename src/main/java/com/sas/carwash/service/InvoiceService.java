@@ -155,28 +155,28 @@ public class InvoiceService {
 		return invoiceRepository.findByJobObjId(id);
 	}
 
-	public Invoice saveFastInvoice(JobCard jobCard, JobSpares jobSpares, FastJobCardRecord fastJobCard) throws Exception {
-		Invoice invoice = Invoice.builder()
-				.jobId(jobCard.getJobId())
-				.ownerName(jobCard.getOwnerName())
-				.ownerPhoneNumber(jobCard.getOwnerPhoneNumber())
-				.vehicleRegNo(jobCard.getVehicleRegNo())
-				.vehicleName(jobCard.getVehicleName())
-				.grandTotal(jobSpares.getGrandTotalWithGST())
-				.jobObjId(jobSpares.getId())
-				.paymentSplitList(List.of(PaymentSplit.builder()
-						.paymentAmount(jobSpares.getGrandTotalWithGST())
-						.paymentMode(fastJobCard.paymentMode())
-						.flag("ADD")
-						.build()))
-				.creditPaymentList(new ArrayList<>())
-				.pendingAmount(BigDecimal.ZERO)
-				.creditFlag(false)
-				.creditSettledFlag(false)
-				.build();
+	// public Invoice saveFastInvoice(JobCard jobCard, JobSpares jobSpares, FastJobCardRecord fastJobCard) throws Exception {
+	// 	Invoice invoice = Invoice.builder()
+	// 			.jobId(jobCard.getJobId())
+	// 			.ownerName(jobCard.getOwnerName())
+	// 			.ownerPhoneNumber(jobCard.getOwnerPhoneNumber())
+	// 			.vehicleRegNo(jobCard.getVehicleRegNo())
+	// 			.vehicleName(jobCard.getVehicleName())
+	// 			.grandTotal(jobSpares.getGrandTotalWithGST())
+	// 			.jobObjId(jobSpares.getId())
+	// 			.paymentSplitList(List.of(PaymentSplit.builder()
+	// 					.paymentAmount(jobSpares.getGrandTotalWithGST())
+	// 					.paymentMode(fastJobCard.paymentMode())
+	// 					.flag("ADD")
+	// 					.build()))
+	// 			.creditPaymentList(new ArrayList<>())
+	// 			.pendingAmount(BigDecimal.ZERO)
+	// 			.creditFlag(false)
+	// 			.creditSettledFlag(false)
+	// 			.build();
 
-		return save(invoice);
-	}
+	// 	return save(invoice);
+	// }
 
 	public Map<String, String> multiCreditSettlement(MultiCreditPayment multiCreditPayment) throws Exception {
 		Map<String, String> response = new HashMap<>();
