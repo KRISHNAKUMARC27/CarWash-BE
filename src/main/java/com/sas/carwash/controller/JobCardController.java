@@ -21,6 +21,7 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.JobVehiclePhotos;
 import com.sas.carwash.model.FastJobCardRecord;
+import com.sas.carwash.model.FullJobCardRecord;
 import com.sas.carwash.service.JobCardService;
 
 import lombok.RequiredArgsConstructor;
@@ -40,8 +41,8 @@ public class JobCardController {
 	}
 
 	@PostMapping
-	public JobCard save(@RequestBody JobCard jobCard) {
-		return jobCardService.save(jobCard);
+	public JobCard save(@RequestBody FullJobCardRecord fullJobCard) throws Exception {
+		return jobCardService.saveFullJobCard(fullJobCard);
 	}
 
 	@PostMapping("/fastjobCard")

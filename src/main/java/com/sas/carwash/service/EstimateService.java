@@ -24,7 +24,6 @@ import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.Payments;
 import com.sas.carwash.model.CreditPayment;
-import com.sas.carwash.model.FastJobCardRecord;
 import com.sas.carwash.model.MultiCreditPayment;
 import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;

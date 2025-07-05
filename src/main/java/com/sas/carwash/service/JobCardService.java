@@ -41,6 +41,7 @@ import com.sas.carwash.entity.ServiceInventory;
 import com.sas.carwash.entity.SparesInventory;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.FastJobCardRecord;
+import com.sas.carwash.model.FullJobCardRecord;
 import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;
 import com.sas.carwash.repository.InvoiceRepository;
@@ -71,8 +72,6 @@ public class JobCardService {
 	private final MongoTemplate mongoTemplate;
 	private final PdfUtils pdfUtils;
 	private final PaymentsService paymentsService;
-	private final EstimateService estimateService;
-	private final InvoiceService invoiceService;
 	private final UtilService utilService;
 
 	@Value("${server.port}")
@@ -1817,6 +1816,23 @@ public class JobCardService {
 		invoiceRepository.save(invoice);
 	}
 
+	public JobCard saveFullJobCard(FullJobCardRecord fullJobCard) throws Exception {
+		JobCard jobCard = fullJobCard.jobCard();
+		jobCard.setJobStatus("OPEN");
+		jobCard = save(jobCard);
+
+		JobSpares jobSpares = JobSpares.builder()
+				.id(jobCard.getId())
+				.jobId(jobCard.getJobId())
+				.jobServiceInfo(fullJobCard.jobServiceInfo())
+				.jobSparesInfo(fullJobCard.jobSparesInfo())
+				.build();
+
+		jobSpares = updateJobSpares(jobSpares);
+
+		return jobCard;
+
+	}
 	public JobCard createFastJobCard(FastJobCardRecord fastJobCard) throws Exception {
 		JobCard jobCard = JobCard.builder()
 				.ownerName(fastJobCard.ownerName())
