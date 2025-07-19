@@ -4,15 +4,19 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.WeekFields;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.sas.carwash.entity.Payments;
+import com.sas.carwash.model.PaymentModification;
 import com.sas.carwash.repository.PaymentsRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -32,17 +36,38 @@ public class PaymentsService {
 	}
 
 	public void deleteById(String id) {
-		paymentsRepository.deleteById(id);
+		Payments currPayments = findById(id);
+		currPayments = recordModifiedPayments(BigDecimal.ZERO, currPayments);
+		currPayments.setIsDeleted(true);
+		paymentsRepository.save(currPayments);
+		//paymentsRepository.deleteById(id);
 	}
 
 	public List<Payments> findAll() {
 		return paymentsRepository.findAllByOrderByIdDesc();
 	}
 
+	public Payments recordModifiedPayments(BigDecimal newAmount, Payments currPayments) {
+		List<PaymentModification> modifiedPayments = new ArrayList<>(
+				Optional.ofNullable(currPayments.getModifiedPayments()).orElse(Collections.emptyList()));
+		PaymentModification payMod = PaymentModification.builder()
+				.newAmount(newAmount)
+				.oldAmount(currPayments.getPaymentAmount())
+				.modifiedAt(LocalDateTime.now())
+				.build();
+		modifiedPayments.add(payMod);
+		currPayments.setModifiedPayments(modifiedPayments);
+		return currPayments;
+	}
+
 	// REPORT START
 	private Map<String, Object> processPayments(List<Payments> records) {
 		Map<String, Object> result = new HashMap<>();
 
+		records = records.stream()
+				.filter(p -> p.getIsDeleted() == null || !p.getIsDeleted()) // exclude only if true
+				.collect(Collectors.toList());
+				
 		// Total Payments amount
 		BigDecimal total = records.stream()
 				.map(exp -> Optional.ofNullable(exp.getPaymentAmount()).orElse(BigDecimal.ZERO))
@@ -68,7 +93,7 @@ public class PaymentsService {
 		Map<String, BigDecimal> isCredit = records.stream()
 				.collect(Collectors.groupingBy(
 						exp -> {
-							Boolean credit = Optional.ofNullable(exp.isCreditPayment()).orElse(false);
+							Boolean credit = Optional.ofNullable(exp.getIsCreditPayment()).orElse(false);
 							return credit ? "Credit" : "Non-Credit";
 						},
 						Collectors.reducing(

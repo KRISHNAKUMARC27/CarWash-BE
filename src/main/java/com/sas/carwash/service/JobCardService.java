@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.Date;
 import java.util.Calendar;
+import java.util.Collections;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import com.sas.carwash.entity.Estimate;
@@ -42,6 +43,7 @@ import com.sas.carwash.entity.SparesInventory;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.FastJobCardRecord;
 import com.sas.carwash.model.FullJobCardRecord;
+import com.sas.carwash.model.PaymentModification;
 import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;
 import com.sas.carwash.repository.InvoiceRepository;
@@ -1595,83 +1597,108 @@ public class JobCardService {
 		} else {
 			// Overpayment: try to reduce credit payments first
 			BigDecimal overpaid = difference.abs(); // positive amount to reduce
+			BigDecimal currentPending = estimate.getPendingAmount();
 
-			// Remove from creditPaymentList (latest first)
-			List<CreditPayment> creditPayments = estimate.getCreditPaymentList();
-			creditPayments.sort(Comparator.comparing(CreditPayment::getCreditDate).reversed());
+			if (currentPending.compareTo(overpaid) > 0) {
+				currentPending = currentPending.subtract(overpaid);
+				estimate.setPendingAmount(currentPending);
+				estimate.setCreditFlag(true);
+				estimate.setCreditSettledFlag(false);
+			} else if (currentPending.compareTo(overpaid) == 0) {
+				estimate.setPendingAmount(BigDecimal.ZERO);
+				boolean hasCredit = estimate.getPaymentSplitList().stream()
+						.anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
 
-			Iterator<CreditPayment> cpIterator = creditPayments.iterator();
-			while (cpIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
-				CreditPayment cp = cpIterator.next();
-				BigDecimal amt = cp.getAmount();
+				estimate.setCreditFlag(hasCredit);
+				estimate.setCreditSettledFlag(hasCredit && estimate.getPendingAmount().compareTo(BigDecimal.ZERO) == 0);
 
-				if (overpaid.compareTo(amt) >= 0) {
-					overpaid = overpaid.subtract(amt);
-					cpIterator.remove(); // remove entire payment
+			} else {
 
-					// inform payment service
-					paymentsService.deleteById(cp.getPaymentId());
-				} else {
-					cp.setAmount(amt.subtract(overpaid));
-					overpaid = BigDecimal.ZERO;
+				// Remove from creditPaymentList (latest first)
+				List<CreditPayment> creditPayments = estimate.getCreditPaymentList();
+				creditPayments.sort(Comparator.comparing(CreditPayment::getCreditDate).reversed());
 
-					// inform payment service
-					Payments payments = paymentsService.findById(cp.getPaymentId());
-					payments.setPaymentAmount(cp.getAmount());
-					payments.setPaymentMode(cp.getPaymentMode());
-					paymentsService.save(payments);
+				Iterator<CreditPayment> cpIterator = creditPayments.iterator();
+				while (cpIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
+					CreditPayment cp = cpIterator.next();
+					BigDecimal amt = cp.getAmount();
+
+					if (overpaid.compareTo(amt) >= 0) {
+						overpaid = overpaid.subtract(amt);
+						cpIterator.remove(); // remove entire payment
+
+						// inform payment service
+						paymentsService.deleteById(cp.getPaymentId());
+					} else {
+						cp.setAmount(amt.subtract(overpaid));
+						overpaid = BigDecimal.ZERO;
+
+						// inform payment service
+						Payments payments = paymentsService.findById(cp.getPaymentId());
+
+						// record modified payments.
+						payments = paymentsService.recordModifiedPayments(cp.getAmount(), payments);
+
+						payments.setPaymentAmount(cp.getAmount());
+						payments.setPaymentMode(cp.getPaymentMode());
+						paymentsService.save(payments);
+					}
 				}
-			}
 
-			// Remove from paymentSplitList (excluding CREDIT)
-			List<PaymentSplit> splits = estimate.getPaymentSplitList();
-			splits.sort(Comparator.comparing(PaymentSplit::getPaymentAmount).reversed());
+				// Remove from paymentSplitList (excluding CREDIT)
+				List<PaymentSplit> splits = estimate.getPaymentSplitList();
+				splits.sort(Comparator.comparing(PaymentSplit::getPaymentAmount).reversed());
 
-			Iterator<PaymentSplit> psIterator = splits.iterator();
-			while (psIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
-				PaymentSplit ps = psIterator.next();
-				if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
-					continue;
+				Iterator<PaymentSplit> psIterator = splits.iterator();
+				while (psIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
+					PaymentSplit ps = psIterator.next();
+					if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
+						continue;
 
-				BigDecimal amt = ps.getPaymentAmount();
-				if (overpaid.compareTo(amt) >= 0) {
-					overpaid = overpaid.subtract(amt);
-					psIterator.remove();
+					BigDecimal amt = ps.getPaymentAmount();
+					if (overpaid.compareTo(amt) >= 0) {
+						overpaid = overpaid.subtract(amt);
+						psIterator.remove();
 
-					// inform payment service
-					paymentsService.deleteById(ps.getPaymentId());
-				} else {
-					ps.setPaymentAmount(amt.subtract(overpaid));
-					overpaid = BigDecimal.ZERO;
+						// inform payment service
+						paymentsService.deleteById(ps.getPaymentId());
+					} else {
+						ps.setPaymentAmount(amt.subtract(overpaid));
+						overpaid = BigDecimal.ZERO;
 
-					// inform payment service
-					Payments payments = paymentsService.findById(ps.getPaymentId());
-					payments.setPaymentAmount(ps.getPaymentAmount());
-					payments.setPaymentMode(ps.getPaymentMode());
-					paymentsService.save(payments);
+						// inform payment service
+						Payments payments = paymentsService.findById(ps.getPaymentId());
+
+						// record modified payments.
+						payments = paymentsService.recordModifiedPayments(ps.getPaymentAmount(), payments);
+
+						payments.setPaymentAmount(ps.getPaymentAmount());
+						payments.setPaymentMode(ps.getPaymentMode());
+						paymentsService.save(payments);
+					}
 				}
+
+				// Recalculate total paid after adjustment
+				totalPaid = splits.stream().filter(p -> !"CREDIT".equalsIgnoreCase(p.getPaymentMode()))
+						.map(p -> Optional.ofNullable(p.getPaymentAmount()).orElse(BigDecimal.ZERO))
+						.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+				totalCreditPaid = creditPayments.stream()
+						.map(p -> Optional.ofNullable(p.getAmount()).orElse(BigDecimal.ZERO))
+						.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+				totalActualPaid = totalPaid.add(totalCreditPaid);
+
+				// New pending
+				BigDecimal newPending = newGrandTotal.subtract(totalActualPaid);
+				estimate.setPendingAmount(newPending.max(BigDecimal.ZERO)); // no negative pending
+
+				// Credit flags
+				boolean hasCredit = splits.stream().anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
+
+				estimate.setCreditFlag(hasCredit);
+				estimate.setCreditSettledFlag(hasCredit && newPending.compareTo(BigDecimal.ZERO) == 0);
 			}
-
-			// Recalculate total paid after adjustment
-			totalPaid = splits.stream().filter(p -> !"CREDIT".equalsIgnoreCase(p.getPaymentMode()))
-					.map(p -> Optional.ofNullable(p.getPaymentAmount()).orElse(BigDecimal.ZERO))
-					.reduce(BigDecimal.ZERO, BigDecimal::add);
-
-			totalCreditPaid = creditPayments.stream()
-					.map(p -> Optional.ofNullable(p.getAmount()).orElse(BigDecimal.ZERO))
-					.reduce(BigDecimal.ZERO, BigDecimal::add);
-
-			totalActualPaid = totalPaid.add(totalCreditPaid);
-
-			// New pending
-			BigDecimal newPending = newGrandTotal.subtract(totalActualPaid);
-			estimate.setPendingAmount(newPending.max(BigDecimal.ZERO)); // no negative pending
-
-			// Credit flags
-			boolean hasCredit = splits.stream().anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
-
-			estimate.setCreditFlag(hasCredit);
-			estimate.setCreditSettledFlag(hasCredit && newPending.compareTo(BigDecimal.ZERO) == 0);
 		}
 
 		// Save back the updated estimate (pseudo code - use repo)
@@ -1682,7 +1709,7 @@ public class JobCardService {
 		Invoice invoice = invoiceRepository.findById(jobSpares.getInvoiceObjId())
 				.orElseThrow(() -> new RuntimeException("Invoice ID not found"));
 
-		BigDecimal newGrandTotal = Optional.ofNullable(jobSpares.getGrandTotal()).orElse(BigDecimal.ZERO);
+		BigDecimal newGrandTotal = Optional.ofNullable(jobSpares.getGrandTotalWithGST()).orElse(BigDecimal.ZERO);
 		BigDecimal oldGrandTotal = Optional.ofNullable(invoice.getGrandTotal()).orElse(BigDecimal.ZERO);
 		BigDecimal difference = newGrandTotal.subtract(oldGrandTotal);
 
@@ -1733,83 +1760,109 @@ public class JobCardService {
 		} else {
 			// Overpayment: try to reduce credit payments first
 			BigDecimal overpaid = difference.abs(); // positive amount to reduce
+			BigDecimal currentPending = invoice.getPendingAmount();
 
-			// Remove from creditPaymentList (latest first)
-			List<CreditPayment> creditPayments = invoice.getCreditPaymentList();
-			creditPayments.sort(Comparator.comparing(CreditPayment::getCreditDate).reversed());
+			if (currentPending.compareTo(overpaid) > 0) {
+				currentPending = currentPending.subtract(overpaid);
+				invoice.setPendingAmount(currentPending);
+				invoice.setCreditFlag(true);
+				invoice.setCreditSettledFlag(false);
+			} else if (currentPending.compareTo(overpaid) == 0) {
+				invoice.setPendingAmount(BigDecimal.ZERO);
+				boolean hasCredit = invoice.getPaymentSplitList().stream()
+						.anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
 
-			Iterator<CreditPayment> cpIterator = creditPayments.iterator();
-			while (cpIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
-				CreditPayment cp = cpIterator.next();
-				BigDecimal amt = cp.getAmount();
+				invoice.setCreditFlag(hasCredit);
+				invoice.setCreditSettledFlag(hasCredit && invoice.getPendingAmount().compareTo(BigDecimal.ZERO) == 0);
 
-				if (overpaid.compareTo(amt) >= 0) {
-					overpaid = overpaid.subtract(amt);
-					cpIterator.remove(); // remove entire payment
+			} else {
+				// Remove from creditPaymentList (latest first)
+				List<CreditPayment> creditPayments = Optional.ofNullable(invoice.getCreditPaymentList())
+						.orElse(new ArrayList<>());
 
-					// inform payment service
-					paymentsService.deleteById(cp.getPaymentId());
-				} else {
-					cp.setAmount(amt.subtract(overpaid));
-					overpaid = BigDecimal.ZERO;
+				creditPayments.sort(Comparator.comparing(CreditPayment::getCreditDate).reversed());
 
-					// inform payment service
-					Payments payments = paymentsService.findById(cp.getPaymentId());
-					payments.setPaymentAmount(cp.getAmount());
-					payments.setPaymentMode(cp.getPaymentMode());
-					paymentsService.save(payments);
+				Iterator<CreditPayment> cpIterator = creditPayments.iterator();
+				while (cpIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
+					CreditPayment cp = cpIterator.next();
+					BigDecimal amt = cp.getAmount();
+
+					if (overpaid.compareTo(amt) >= 0) {
+						overpaid = overpaid.subtract(amt);
+						cpIterator.remove(); // remove entire payment
+
+						// inform payment service
+						paymentsService.deleteById(cp.getPaymentId());
+					} else {
+						cp.setAmount(amt.subtract(overpaid));
+						overpaid = BigDecimal.ZERO;
+
+						// inform payment service
+						Payments payments = paymentsService.findById(cp.getPaymentId());
+
+						// record modified payments.
+						payments = paymentsService.recordModifiedPayments(cp.getAmount(), payments);
+
+						payments.setPaymentAmount(cp.getAmount());
+						payments.setPaymentMode(cp.getPaymentMode());
+						paymentsService.save(payments);
+					}
 				}
-			}
 
-			// Remove from paymentSplitList (excluding CREDIT)
-			List<PaymentSplit> splits = invoice.getPaymentSplitList();
-			splits.sort(Comparator.comparing(PaymentSplit::getPaymentAmount).reversed());
+				// Remove from paymentSplitList (excluding CREDIT)
+				List<PaymentSplit> splits = invoice.getPaymentSplitList();
+				splits.sort(Comparator.comparing(PaymentSplit::getPaymentAmount).reversed());
 
-			Iterator<PaymentSplit> psIterator = splits.iterator();
-			while (psIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
-				PaymentSplit ps = psIterator.next();
-				if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
-					continue;
+				Iterator<PaymentSplit> psIterator = splits.iterator();
+				while (psIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
+					PaymentSplit ps = psIterator.next();
+					if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
+						continue;
 
-				BigDecimal amt = ps.getPaymentAmount();
-				if (overpaid.compareTo(amt) >= 0) {
-					overpaid = overpaid.subtract(amt);
-					psIterator.remove();
+					BigDecimal amt = ps.getPaymentAmount();
+					if (overpaid.compareTo(amt) >= 0) {
+						overpaid = overpaid.subtract(amt);
+						psIterator.remove();
 
-					// inform payment service
-					paymentsService.deleteById(ps.getPaymentId());
-				} else {
-					ps.setPaymentAmount(amt.subtract(overpaid));
-					overpaid = BigDecimal.ZERO;
+						// inform payment service
+						paymentsService.deleteById(ps.getPaymentId());
+					} else {
+						ps.setPaymentAmount(amt.subtract(overpaid));
+						overpaid = BigDecimal.ZERO;
 
-					// inform payment service
-					Payments payments = paymentsService.findById(ps.getPaymentId());
-					payments.setPaymentAmount(ps.getPaymentAmount());
-					payments.setPaymentMode(ps.getPaymentMode());
-					paymentsService.save(payments);
+						// inform payment service
+						Payments payments = paymentsService.findById(ps.getPaymentId());
+
+						// record modified payments.
+						payments = paymentsService.recordModifiedPayments(ps.getPaymentAmount(), payments);
+
+						payments.setPaymentAmount(ps.getPaymentAmount());
+						payments.setPaymentMode(ps.getPaymentMode());
+						paymentsService.save(payments);
+					}
 				}
+
+				// Recalculate total paid after adjustment
+				totalPaid = splits.stream().filter(p -> !"CREDIT".equalsIgnoreCase(p.getPaymentMode()))
+						.map(p -> Optional.ofNullable(p.getPaymentAmount()).orElse(BigDecimal.ZERO))
+						.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+				totalCreditPaid = creditPayments.stream()
+						.map(p -> Optional.ofNullable(p.getAmount()).orElse(BigDecimal.ZERO))
+						.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+				totalActualPaid = totalPaid.add(totalCreditPaid);
+
+				// New pending
+				BigDecimal newPending = newGrandTotal.subtract(totalActualPaid);
+				invoice.setPendingAmount(newPending.max(BigDecimal.ZERO)); // no negative pending
+
+				// Credit flags
+				boolean hasCredit = splits.stream().anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
+
+				invoice.setCreditFlag(hasCredit);
+				invoice.setCreditSettledFlag(hasCredit && newPending.compareTo(BigDecimal.ZERO) == 0);
 			}
-
-			// Recalculate total paid after adjustment
-			totalPaid = splits.stream().filter(p -> !"CREDIT".equalsIgnoreCase(p.getPaymentMode()))
-					.map(p -> Optional.ofNullable(p.getPaymentAmount()).orElse(BigDecimal.ZERO))
-					.reduce(BigDecimal.ZERO, BigDecimal::add);
-
-			totalCreditPaid = creditPayments.stream()
-					.map(p -> Optional.ofNullable(p.getAmount()).orElse(BigDecimal.ZERO))
-					.reduce(BigDecimal.ZERO, BigDecimal::add);
-
-			totalActualPaid = totalPaid.add(totalCreditPaid);
-
-			// New pending
-			BigDecimal newPending = newGrandTotal.subtract(totalActualPaid);
-			invoice.setPendingAmount(newPending.max(BigDecimal.ZERO)); // no negative pending
-
-			// Credit flags
-			boolean hasCredit = splits.stream().anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
-
-			invoice.setCreditFlag(hasCredit);
-			invoice.setCreditSettledFlag(hasCredit && newPending.compareTo(BigDecimal.ZERO) == 0);
 		}
 
 		// Save back the updated invoice (pseudo code - use repo)
@@ -1833,6 +1886,7 @@ public class JobCardService {
 		return jobCard;
 
 	}
+
 	public JobCard createFastJobCard(FastJobCardRecord fastJobCard) throws Exception {
 		JobCard jobCard = JobCard.builder()
 				.ownerName(fastJobCard.ownerName())
@@ -1858,9 +1912,9 @@ public class JobCardService {
 		jobCard = updateJobStatus(jobCard);
 
 		// if (fastJobCard.billType().equals("ESTIMATE")) {
-		// 	estimateService.saveFastEstimate(jobCard, jobSpares, fastJobCard);
+		// estimateService.saveFastEstimate(jobCard, jobSpares, fastJobCard);
 		// } else if (fastJobCard.billType().equals("INVOICE")) {
-		// 	invoiceService.saveFastInvoice(jobCard, jobSpares, fastJobCard);
+		// invoiceService.saveFastInvoice(jobCard, jobSpares, fastJobCard);
 		// }
 		return jobCard;
 	}

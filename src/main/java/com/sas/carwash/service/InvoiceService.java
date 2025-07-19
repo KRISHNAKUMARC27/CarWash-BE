@@ -90,6 +90,10 @@ public class InvoiceService {
 					split.setPaymentId(payments.getId());
 				} else if ("MODIFY".equals(split.getFlag())) {
 					Payments payments = paymentsService.findById(split.getPaymentId());
+
+					// record modified payments.
+					payments = paymentsService.recordModifiedPayments(split.getPaymentAmount(), payments);
+
 					payments.setPaymentAmount(split.getPaymentAmount());
 					payments.setPaymentMode(split.getPaymentMode());
 					paymentsService.save(payments);
@@ -118,6 +122,10 @@ public class InvoiceService {
 				credit.setPaymentId(payments.getId());
 			} else if ("MODIFY".equals(credit.getFlag())) {
 				Payments payments = paymentsService.findById(credit.getPaymentId());
+
+				// record modified payments.
+				payments = paymentsService.recordModifiedPayments(credit.getAmount(), payments);
+
 				payments.setPaymentAmount(credit.getAmount());
 				payments.setPaymentMode(credit.getPaymentMode());
 				paymentsService.save(payments);
