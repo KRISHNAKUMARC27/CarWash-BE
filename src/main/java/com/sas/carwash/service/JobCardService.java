@@ -1365,8 +1365,8 @@ public class JobCardService {
 
 		}
 		for (int i = 0; i < jobSpares.getJobSparesInfo().size(); i++) {
-			JobSparesInfo jobSparesInfo = jobSpares.getJobServiceInfo().get(i);
-			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElse(null);
+			JobSparesInfo jobSparesInfo = jobSpares.getJobSparesInfo().get(i);
+			SparesInventory spares = sparesInventoryRepository.findById(jobSparesInfo.getSparesId()).orElse(null);
 			// Update the taxMap
 			BigDecimal gstPercentage = jobSparesInfo.getGstPercentage();
 			BigDecimal amount = jobSparesInfo.getAmount();
@@ -1375,7 +1375,7 @@ public class JobCardService {
 			taxMap.put(gstPercentage, taxMap.getOrDefault(gstPercentage, BigDecimal.ZERO).add(amount));
 			totalQty = totalQty.add(jobSparesInfo.getQty());
 			productList.add(Map.of("sno", count++, "name", jobSparesInfo.getSparesAndLabour(), "hsnCode",
-					service.getHsnCode() != null ? service.getHsnCode() : "", "qty", jobSparesInfo.getQty(), "rate",
+					spares.getPartNumber() != null ? spares.getPartNumber() : "", "qty", jobSparesInfo.getQty(), "rate",
 					jobSparesInfo.getRate(), "gst", gstPercentage.add(gstPercentage) + "%", "discount",
 					jobSparesInfo.getDiscount() != null ? jobSparesInfo.getDiscount() : "", "amount", amount));
 
@@ -1486,14 +1486,14 @@ public class JobCardService {
 
 		}
 		for (int i = 0; i < jobSpares.getJobSparesInfo().size(); i++) {
-			JobSparesInfo jobSparesInfo = jobSpares.getJobServiceInfo().get(i);
-			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElse(null);
+			JobSparesInfo jobSparesInfo = jobSpares.getJobSparesInfo().get(i);
+			SparesInventory spares = sparesInventoryRepository.findById(jobSparesInfo.getSparesId()).orElse(null);
 
 			BigDecimal amount = jobSparesInfo.getAmount();
 
 			totalQty = totalQty.add(jobSparesInfo.getQty());
 			productList.add(Map.of("sno", count++, "name", jobSparesInfo.getSparesAndLabour(), "hsnCode",
-					service.getHsnCode() != null ? service.getHsnCode() : "", "qty", jobSparesInfo.getQty(), "rate",
+					spares.getPartNumber() != null ? spares.getPartNumber() : "", "qty", jobSparesInfo.getQty(), "rate",
 					jobSparesInfo.getRate(), "discount",
 					jobSparesInfo.getDiscount() != null ? jobSparesInfo.getDiscount() : "", "amount", amount));
 

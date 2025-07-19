@@ -11,6 +11,7 @@ D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\RoleRepositor
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\config\CORSFilter.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\DepartmentRepository.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\CreditPayment.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\FullJobCardRecord.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\utils\Utils.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\ReceiptEstimateRepository.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\utils\PdfUtils.java

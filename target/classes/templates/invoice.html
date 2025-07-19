@@ -1,119 +1,137 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<style>
-table {
-	width: 100%;
-	border-collapse: collapse;
-}
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			font-size: 12px;
+		}
 
-td, th {
-	border: 1px solid black;
-	padding: 5px;
-	text-align: left;
-}
+		table {
+			width: 100%;
+			border-collapse: collapse;
+		}
 
-.header-row {
-	position: relative;
-	/* Ensure absolute children are positioned relative to this parent */
-	height: 50px; /* Adjust height as needed */
-}
+		th,
+		td {
+			padding: 5px;
+			text-align: left;
+			vertical-align: top;
+			word-wrap: break-word;
+			word-break: break-word;
+			white-space: normal;
+		}
 
-.gstin {
-	position: absolute;
-	top: 5px;
-	left: 5px;
-	font-weight: bold;
-}
+		.header {
+			margin-top: 7px;
+			text-align: center;
+			font-size: 24px;
+			font-weight: bolder;
+			font-family: 'Times New Roman', Times, serif;
+			line-height: 1.0;
+		}
 
-.cell {
-	position: absolute;
-	top: 5px;
-	right: 5px;
-}
+		.titleAddress {
+			text-align: center;
+			font-size: 14px;
+			font-weight: 550;
+			font-family: Arial, Helvetica, sans-serif;
+			line-height: 1.0;
+			margin-top: -10px;
+			margin-bottom: 0px;
+		}
 
-/* Remove row borders inside nested-table */
-.nested-table tbody tr td {
-	border-top: none !important;
-	border-bottom: none !important;
-	height: 15px;
-	font-size: 15px;
-	line-height: 0.5;
-}
+		.header-row {
+			position: relative;
+			height: 50px;
+		}
 
-/* Keep only the table's outer border */
-.nested-table {
-	border: 1px solid black;
-}
+		.gstin {
+			position: absolute;
+			top: 5px;
+			left: 5px;
+			font-weight: bold;
+		}
 
-/* Ensure table headers retain their bottom border */
-.nested-table thead th {
-	border-bottom: 1px solid black;
-}
+		.cell {
+			position: absolute;
+			top: 5px;
+			right: 5px;
+		}
 
-.collapse-table {
-	width: 100%;
-	border-collapse: collapse;
-}
+		.outer-border {
+			border: 1px solid black;
+			padding: 10px;
+		}
 
-/* Restrict styles only to immediate children of .collapse-table */
-.collapse-table>tbody>tr>td, .collapse-table>tbody>tr>th {
-	border-top: none;
-	border-bottom: none;
-	border-left: 1px solid black;
-	border-right: 1px solid black;
-	padding: 5px;
-	text-align: left;
-}
+		.collapse-table,
+		.nested-table {
+			width: 100%;
+			border-collapse: collapse;
+		}
 
-/* Remove border-left for the first column */
-.collapse-table>tbody>tr>td:first-child, .collapse-table>tbody>tr>th:first-child
-	{
-	border-left: none;
-}
+		.collapse-table td,
+		.collapse-table th {
+			border: 1px solid black;
+		}
 
-/* Remove border-right for the last column */
-.collapse-table>tbody>tr>td:last-child, .collapse-table>tbody>tr>th:last-child
-	{
-	border-right: none;
-}
+		.nested-table th {
+			border-bottom: 1px solid black;
+			background-color: #f2f2f2;
+		}
 
-.header {
-	margin-top: 7px;
-	text-align: center;
-	font-size: 24px;
-	font-weight: bolder;
-	font-family: 'Times New Roman', Times, serif;
-	line-height: 1.0;
-}
+		.nested-table td,
+		.nested-table th {
+			border-left: 1px solid black;
+			border-right: 1px solid black;
+			border-top: none;
+			border-bottom: none;
+		}
 
-.titleAddress {
-	text-align: center;
-	font-size: 14px;
-	font-weight: 550;
-	font-family: Arial, Helvetica, sans-serif;
-	line-height: 1.0;
-	margin-top: -10px;
-	margin-bottom: 0px;
-}
+		.nested-table td:nth-child(4),
+		.nested-table td:nth-child(5),
+		.nested-table td:nth-child(6),
+		.nested-table td:nth-child(7),
+		.nested-table td:nth-child(8) {
+			text-align: right;
+		}
 
-.termsConditions {
-	text-align: left;
-	font-size: 8px;
-	font-weight: 550;
-	font-family: Arial, Helvetica, sans-serif;
-	line-height: 0.7;
-}
+		.nested-table tbody tr:nth-child(odd) {
+			background-color: #f9f9f9;
+		}
 
-.page-break {
-    page-break-before: always;
-}
+		.page-break {
+			page-break-before: always;
+		}
 
-</style>
+		.termsConditions {
+			text-align: left;
+			font-size: 8px;
+			font-weight: 550;
+			font-family: Arial, Helvetica, sans-serif;
+			line-height: 0.7;
+		}
+
+		.net-amount {
+			text-align: right;
+			font-size: 22px;
+			font-weight: bolder;
+			border: 1px solid black;
+			padding: 10px;
+		}
+
+		.section {
+			border: 1px solid black;
+			margin-top: 10px;
+			padding: 10px;
+		}
+		
+	</style>
 </head>
+
 <body>
-	<p style="text-align: center; margin-bottom: 0px;">INVOICE</p>
-	<table>
+	<table class="outer-border">
 		<tr class="header-row">
 			<td colspan="2">
 				<div class="gstin">GSTIN: 33DDKPP5663N1ZU</div>
@@ -121,63 +139,37 @@ td, th {
 				<div>
 					<p class="header">CAR SQUARE</p>
 					<p class="titleAddress">
-						1/320, VEPPAMPALAYAM, VALLAIPURATHANPALAYAM,<br></br>KADIRAMPATTAI
-						(po), ERODE - 638 107<br></br> Tamil Nadu (State Code - 33)
+						1/320, VEPPAMPALAYAM, VALLAIPURATHANPALAYAM,<br></br>
+						KADIRAMPATTAI (po), ERODE - 638 107<br></br>
+						Tamil Nadu (State Code - 33)
 					</p>
 				</div>
 			</td>
 		</tr>
 		<tr>
 			<td colspan="2">
-				<table class="collapse-table ">
-					<!-- <thead>
-						<tr>
-							<th>Nested Header 1</th>
-							<th>Nested Header 2</th>
-							<th>Nested Header 3</th>
-						</tr>
-					</thead> -->
+				<table class="collapse-table">
 					<tbody>
 						<tr>
-							<td style="width: 33%;"><strong>To:</strong><span
-								th:text="${ownerName}"></span></td>
-							<td style="width: 33%;"><strong>KMs:</strong><span
-								th:text="${kms}"></span></td>
-							<td
-								style="width: 33%; display: flex; justify-content: space-between; align-items: center;">
-								<strong style="flex: 1; text-align: left;">Invoice No</strong> <span
-								style="flex: 0; text-align: center;">:</span> <span
-								style="flex: 1; text-align: right;" th:text="${invoiceNo}"></span>
-							</td>
-
+							<td><strong>To:</strong> <span th:text="${ownerName}"></span></td>
+							<td><strong>KMs:</strong> <span th:text="${kms}"></span></td>
+							<td><strong>Invoice No:</strong> <span th:text="${invoiceNo}"></span></td>
 						</tr>
 						<tr>
-							<td style="width: 33%;"><strong>Vehicle No:</strong><span
-								th:text="${vehNo}"></span></td>
-							<td style="width: 33%;"><strong>Next Free Check
-									KMs:</strong><span th:text="${nextFreeCheckKms}"></span></td>
-							<td
-								style="width: 33%; display: flex; justify-content: space-between; align-items: center;">
-								<strong style="flex: 1; text-align: left;">Date</strong> <span
-								style="flex: 0; text-align: center;">:</span> <span
-								style="flex: 1; text-align: right;" th:text="${date}"></span>
-							</td>
+							<td><strong>Vehicle No:</strong> <span th:text="${vehNo}"></span></td>
+							<td><strong>Next Free Check KMs:</strong> <span th:text="${nextFreeCheckKms}"></span></td>
+							<td><strong>Date:</strong> <span th:text="${date}"></span></td>
 						</tr>
 						<tr>
-							<td style="width: 33%;"><strong>Model:</strong><span
-								th:text="${vehicle}"></span></td>
-							<td style="width: 33%;"><strong>Next Service KMs:</strong><span
-								th:text="${nextServiceKms}"></span></td>
-							<td style="width: 33%;"><strong>Mode:</strong><span
-								th:text="${mode}"></span></td>
+							<td><strong>Model:</strong> <span th:text="${vehicle}"></span></td>
+							<td><strong>Next Service KMs:</strong> <span th:text="${nextServiceKms}"></span></td>
+							<td><strong>Mode:</strong> <span th:text="${mode}"></span></td>
 						</tr>
 					</tbody>
 				</table>
 			</td>
-
 		</tr>
 
-		<!-- Row 3: Nested table -->
 		<tr>
 			<td colspan="2">
 				<table class="nested-table">
@@ -189,12 +181,12 @@ td, th {
 							<th style="width: 5%;">Qty</th>
 							<th style="width: 10%;">Rate</th>
 							<th style="width: 5%;">GST</th>
-							<th style="width: 5%;">Discount</th>
+							<th style="width: 5%;">Dis</th>
 							<th style="width: 10%;">Amount</th>
 						</tr>
 					</thead>
 					<tbody>
-						<tr th:each="product, indexStat : ${products}">
+						<tr th:each="product : ${products}">
 							<td th:text="${product.sno}"></td>
 							<td th:text="${product.name}"></td>
 							<td th:text="${product.hsnCode}"></td>
@@ -208,24 +200,23 @@ td, th {
 				</table>
 			</td>
 		</tr>
-		<div class="page-break" th:if="${pagebreak}"></div>
-		
+
 		<tr>
 			<td colspan="2">
 				<table class="collapse-table">
 					<tbody>
 						<tr>
-							<td style="width: 70%; font-size: 12px;">
+							<td style="width: 70%;">
 								<table class="nested-table">
 									<thead>
 										<tr>
-											<th style="width: 20%;">Taxable Value</th>
-											<th style="width: 5%;">CGST</th>
-											<th style="width: 20%;">Cgst.Amt</th>
-											<th style="width: 5%;">SGST</th>
-											<th style="width: 20%;">Sgst.Amt</th>
-											<th style="width: 10%;">Net %</th>
-											<th style="width: 20%;">Amount</th>
+											<th>Taxable Value</th>
+											<th>CGST</th>
+											<th>Cgst.Amt</th>
+											<th>SGST</th>
+											<th>Sgst.Amt</th>
+											<th>Net %</th>
+											<th>Amount</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -242,15 +233,14 @@ td, th {
 								</table>
 							</td>
 							<td style="width: 30%;">
-								<table class="collapse-table ">
+								<table class="collapse-table">
 									<tbody>
 										<tr>
-											<td style="width: 33%; text-align: right;"><strong>Total
-													Tax Amt: </strong><span th:text="${totalTaxAmt}"></span></td>
+											<td><strong>Total Tax Amt:</strong> <span th:text="${totalTaxAmt}"></span>
+											</td>
 										</tr>
 										<tr>
-											<td style="width: 33%; text-align: right;"><strong>Rounding
-													:</strong><span th:text="${roundOff}"></span></td>
+											<td><strong>Rounding:</strong> <span th:text="${roundOff}"></span></td>
 										</tr>
 									</tbody>
 								</table>
@@ -260,102 +250,82 @@ td, th {
 				</table>
 			</td>
 		</tr>
+
 		<tr>
-			<td colspan="2"
-				style="width: 100%; text-align: right; font-size: 24px; font-weight: bolder;">Net
-				Amount : <span th:text="${netAmount}"></span>
+			<td colspan="2" class="net-amount">
+				Net Amount : <span th:text="${netAmount}"></span>
 			</td>
 		</tr>
+
 		<tr>
-			<td colspan="2"
-				style="width: 100%; text-align: left; font-size: 18px; font-weight: bolder;">Amount
-				in Words: <span th:text="${amountInWords}"></span>
+			<td colspan="2" class="section">
+				<strong>Amount in Words:</strong> <strong th:text="${amountInWords}"></strong>
 			</td>
 		</tr>
+
 		<tr>
-			<td colspan="2">
-				<table class="collapse-table">
+			<td colspan="2" class="section">
+				<table>
 					<tbody>
 						<tr>
-							<td style="width: 10%;"><strong>Bank</strong></td>
-							<td style="width: 90%;">KARUR VYSYA BANK</td>
+							<td><strong>Bank</strong></td>
+							<td>KARUR VYSYA BANK</td>
 						</tr>
 						<tr>
-							<td style="width: 10%;"><strong>A/C No</strong></td>
-							<td style="width: 90%;">1217135000002223</td>
+							<td><strong>A/C No</strong></td>
+							<td>1217135000002223</td>
 						</tr>
 						<tr>
-							<td style="width: 10%;"><strong>Branch</strong></td>
-							<td style="width: 90%;">METTUKADAI</td>
+							<td><strong>Branch</strong></td>
+							<td>METTUKADAI</td>
 						</tr>
 						<tr>
-							<td style="width: 10%;"><strong>IFSC</strong></td>
-							<td style="width: 90%;">KVBL0001217</td>
+							<td><strong>IFSC</strong></td>
+							<td>KVBL0001217</td>
 						</tr>
 					</tbody>
 				</table>
 			</td>
 		</tr>
+
 		<tr>
-			<td colspan="2">
-				<table class="collapse-table">
-					<tbody>
-						<tr>
-							<td style="width: 70%; font-size: 12px;">
-								<table class="collapse-table ">
-									<tbody class="termsConditions">
-										<tr>
-											<td style="width: 25%;"><strong>TERMS AND
-													CONDITIONS </strong></td>
-										</tr>
-										<tr>
-											<td style="width: 25%;">1. No claims are entertained
-												unless brought to our notice in writing within two days on
-												reciept of goods</td>
-										</tr>
-										<tr>
-											<td style="width: 25%;">2. Interest at 24% will be
-												charged on overdue payment -- Payment within 7 days</td>
-										</tr>
-										<tr>
-											<td style="width: 25%;">3. We are not responsible for
-												breakage or damage in transit</td>
-										</tr>
-										<tr>
-											<td style="width: 25%;">4. Transit insurance if any is
-												to be taken by the buyer</td>
-										</tr>
-										<tr>
-											<td style="width: 25%;">5. Subject to Erode jurisdiction</td>
-										</tr>
-									</tbody>
-								</table>
-							</td>
-							<td style="width: 30%;">
-								<table class="collapse-table ">
-									<tbody>
-										<tr>
-											<td style="width: 25%; text-align: right;"><strong>For
-													CAR SQUARE </strong></td>
-										</tr>
-										<tr>
-											<td style="width: 25%; text-align: right;"></td>
-										</tr>
-										<tr>
-											<td style="width: 25%; text-align: right;"></td>
-										</tr>
-										<tr>
-											<td style="width: 25%; text-align: right;"><strong>Authorised
-													Signature </strong></td>
-										</tr>
-									</tbody>
-								</table>
-							</td>
-						</tr>
-					</tbody>
+			<td colspan="2" class="section">
+				<table style="width: 100%;">
+					<tr>
+						<td style="width: 70%;">
+							<table class="termsConditions">
+								<tr>
+									<td><strong>TERMS AND CONDITIONS</strong></td>
+								</tr>
+								<tr>
+									<td>1. No claims are entertained unless brought to our notice in writing within two
+										days on receipt of goods</td>
+								</tr>
+								<tr>
+									<td>2. Interest at 24% will be charged on overdue payment -- Payment within 7 days
+									</td>
+								</tr>
+								<tr>
+									<td>3. We are not responsible for breakage or damage in transit</td>
+								</tr>
+								<tr>
+									<td>4. Transit insurance if any is to be taken by the buyer</td>
+								</tr>
+								<tr>
+									<td>5. Subject to Erode jurisdiction</td> 	
+								</tr>
+							</table>
+						</td>
+						<td style="text-align: right; vertical-align: bottom;">
+							<p><strong>For CAR SQUARE</strong></p>
+							<br></br><br></br><br></br>
+							<p><strong>Authorised Signature</strong></p>
+						</td>
+					</tr>
 				</table>
 			</td>
 		</tr>
 	</table>
 </body>
+
 </html>

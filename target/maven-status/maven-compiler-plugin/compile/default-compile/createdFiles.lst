@@ -132,6 +132,7 @@ com\sas\carwash\repository\JobCardRepository.class
 com\sas\carwash\repository\LeaveRepository.class
 com\sas\carwash\model\PaymentSplit.class
 com\sas\carwash\entity\EmployeeSalary$EmployeeSalaryBuilder.class
+com\sas\carwash\model\FullJobCardRecord.class
 com\sas\carwash\entity\Employee$EmployeeBuilder.class
 com\sas\carwash\model\SparesFilter.class
 com\sas\carwash\entity\ReceiptInvoice$ReceiptInvoiceBuilder.class
