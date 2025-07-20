@@ -371,23 +371,27 @@ public class JobCardService {
 
 	private JobSpares calculateGSTAndUpdateFields(JobSpares jobSpares) {
 
-		for (JobSparesInfo jobSparesInfo : jobSpares.getJobServiceInfo()) {
-			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
-					() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));
-			jobSparesInfo.setGstPercentage(service.getCgst());
-			BigDecimal totalGstPercentage = service.getCgst().add(service.getSgst());
-			BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage)
-					.divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
-			jobSparesInfo.setGstAmount(totalGstAmount);
+		if (jobSpares.getJobServiceInfo() != null) {
+			for (JobSparesInfo jobSparesInfo : jobSpares.getJobServiceInfo()) {
+				ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
+						() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));
+				jobSparesInfo.setGstPercentage(service.getCgst());
+				BigDecimal totalGstPercentage = service.getCgst().add(service.getSgst());
+				BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage)
+						.divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
+				jobSparesInfo.setGstAmount(totalGstAmount);
+			}
 		}
-		for (JobSparesInfo jobSparesInfo : jobSpares.getJobSparesInfo()) {
-			SparesInventory service = sparesInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
-					() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));
-			jobSparesInfo.setGstPercentage(service.getCgst());
-			BigDecimal totalGstPercentage = service.getCgst().add(service.getSgst());
-			BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage)
-					.divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
-			jobSparesInfo.setGstAmount(totalGstAmount);
+		if (jobSpares.getJobSparesInfo() != null) {
+			for (JobSparesInfo jobSparesInfo : jobSpares.getJobSparesInfo()) {
+				SparesInventory service = sparesInventoryRepository.findById(jobSparesInfo.getSparesId()).orElseThrow(
+						() -> new RuntimeException(jobSparesInfo.getSparesId() + " not found during gst calc"));
+				jobSparesInfo.setGstPercentage(service.getCgst());
+				BigDecimal totalGstPercentage = service.getCgst().add(service.getSgst());
+				BigDecimal totalGstAmount = jobSparesInfo.getAmount().multiply(totalGstPercentage)
+						.divide(BigDecimal.valueOf(100)).add(jobSparesInfo.getAmount());
+				jobSparesInfo.setGstAmount(totalGstAmount);
+			}
 		}
 
 		BigDecimal totalGstSparesValue = jobSpares.getJobSparesInfo() != null
@@ -1297,15 +1301,15 @@ public class JobCardService {
 		Invoice invoice = invoiceRepository.findById(jobCard.getInvoiceObjId()).orElse(null);
 
 		if (jobCard == null) {
-			throw new Exception("JobCard not found for id " + id);
+			throw new Exception("Cannot generate Invoice. JobCard not found for id " + id);
 		}
 
 		if (jobSpares == null) {
-			throw new Exception("JobSpares not found for id " + id);
+			throw new Exception("Cannot generate Invoice. JobSpares not found for id " + id);
 		}
 
 		if (invoice == null) {
-			throw new Exception("Invoice not found for id " + id);
+			throw new Exception("Cannot generate Invoice. Invoice not found for id " + id);
 		}
 
 		String paymentMode = "";
@@ -1349,22 +1353,25 @@ public class JobCardService {
 		BigDecimal totalQty = BigDecimal.ZERO;
 
 		List<Map<String, Object>> productList = new ArrayList<>();
-		for (int i = 0; i < jobSpares.getJobServiceInfo().size(); i++) {
-			JobSparesInfo jobSparesInfo = jobSpares.getJobServiceInfo().get(i);
-			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElse(null);
+		if (jobSpares.getJobServiceInfo() != null) {
+			for (int i = 0; i < jobSpares.getJobServiceInfo().size(); i++) {
+				JobSparesInfo jobSparesInfo = jobSpares.getJobServiceInfo().get(i);
+				ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId())
+						.orElse(null);
 
-			// Update the taxMap
-			BigDecimal gstPercentage = jobSparesInfo.getGstPercentage();
-			BigDecimal amount = jobSparesInfo.getAmount();
+				// Update the taxMap
+				BigDecimal gstPercentage = jobSparesInfo.getGstPercentage();
+				BigDecimal amount = jobSparesInfo.getAmount();
 
-			// Add amount to the taxMap for the corresponding gstPercentage
-			taxMap.put(gstPercentage, taxMap.getOrDefault(gstPercentage, BigDecimal.ZERO).add(amount));
-			totalQty = totalQty.add(jobSparesInfo.getQty());
-			productList.add(Map.of("sno", count++, "name", jobSparesInfo.getSparesAndLabour(), "hsnCode",
-					service.getHsnCode() != null ? service.getHsnCode() : "", "qty", jobSparesInfo.getQty(), "rate",
-					jobSparesInfo.getRate(), "gst", gstPercentage.add(gstPercentage) + "%", "discount",
-					jobSparesInfo.getDiscount() != null ? jobSparesInfo.getDiscount() : "", "amount", amount));
+				// Add amount to the taxMap for the corresponding gstPercentage
+				taxMap.put(gstPercentage, taxMap.getOrDefault(gstPercentage, BigDecimal.ZERO).add(amount));
+				totalQty = totalQty.add(jobSparesInfo.getQty());
+				productList.add(Map.of("sno", count++, "name", jobSparesInfo.getSparesAndLabour(), "hsnCode",
+						service.getHsnCode() != null ? service.getHsnCode() : "", "qty", jobSparesInfo.getQty(), "rate",
+						jobSparesInfo.getRate(), "gst", gstPercentage.add(gstPercentage) + "%", "discount",
+						jobSparesInfo.getDiscount() != null ? jobSparesInfo.getDiscount() : "", "amount", amount));
 
+			}
 		}
 		for (int i = 0; i < jobSpares.getJobSparesInfo().size(); i++) {
 			JobSparesInfo jobSparesInfo = jobSpares.getJobSparesInfo().get(i);
@@ -1425,15 +1432,15 @@ public class JobCardService {
 		Estimate estimate = estimateRepository.findById(jobCard.getEstimateObjId()).orElse(null);
 
 		if (jobCard == null) {
-			throw new Exception("JobCard not found for id " + id);
+			throw new Exception("Cannot generate Estimate. JobCard not found for id " + id);
 		}
 
 		if (jobSpares == null) {
-			throw new Exception("JobSpares not found for id " + id);
+			throw new Exception("Cannot generate Estimate. JobSpares not found for id " + id);
 		}
 
 		if (estimate == null) {
-			throw new Exception("Estimate not found for id " + id);
+			throw new Exception("Cannot generate Estimate. Estimate not found for id " + id);
 		}
 
 		String paymentMode = "";
@@ -1474,18 +1481,21 @@ public class JobCardService {
 		BigDecimal totalQty = BigDecimal.ZERO;
 
 		List<Map<String, Object>> productList = new ArrayList<>();
-		for (int i = 0; i < jobSpares.getJobServiceInfo().size(); i++) {
-			JobSparesInfo jobSparesInfo = jobSpares.getJobServiceInfo().get(i);
-			ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId()).orElse(null);
+		if (jobSpares.getJobServiceInfo() != null) {
+			for (int i = 0; i < jobSpares.getJobServiceInfo().size(); i++) {
+				JobSparesInfo jobSparesInfo = jobSpares.getJobServiceInfo().get(i);
+				ServiceInventory service = serviceInventoryRepository.findById(jobSparesInfo.getSparesId())
+						.orElse(null);
 
-			BigDecimal amount = jobSparesInfo.getAmount();
+				BigDecimal amount = jobSparesInfo.getAmount();
 
-			totalQty = totalQty.add(jobSparesInfo.getQty());
-			productList.add(Map.of("sno", count++, "name", jobSparesInfo.getSparesAndLabour(), "hsnCode",
-					service.getHsnCode() != null ? service.getHsnCode() : "", "qty", jobSparesInfo.getQty(), "rate",
-					jobSparesInfo.getRate(), "discount",
-					jobSparesInfo.getDiscount() != null ? jobSparesInfo.getDiscount() : "", "amount", amount));
+				totalQty = totalQty.add(jobSparesInfo.getQty());
+				productList.add(Map.of("sno", count++, "name", jobSparesInfo.getSparesAndLabour(), "hsnCode",
+						service.getHsnCode() != null ? service.getHsnCode() : "", "qty", jobSparesInfo.getQty(), "rate",
+						jobSparesInfo.getRate(), "discount",
+						jobSparesInfo.getDiscount() != null ? jobSparesInfo.getDiscount() : "", "amount", amount));
 
+			}
 		}
 		for (int i = 0; i < jobSpares.getJobSparesInfo().size(); i++) {
 			JobSparesInfo jobSparesInfo = jobSpares.getJobSparesInfo().get(i);
@@ -1584,15 +1594,7 @@ public class JobCardService {
 			// At UI side this extra amount goes as credit with add flag, but user will
 			// change it to CASH or UPI etc and saved with ADD flag to include as new
 			// payment
-			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
-					.build();
-			List<PaymentSplit> splitList = estimate.getPaymentSplitList();
-			if (splitList != null && !splitList.isEmpty()) {
-				splitList.add(split);
-			} else {
-				splitList = new ArrayList<>();
-				splitList.add(split);
-			}
+			estimate = utilService.updatePaymentListForCreditEstimate(estimate, newPending);
 
 		} else {
 			// Overpayment: try to reduce credit payments first
@@ -1604,6 +1606,8 @@ public class JobCardService {
 				estimate.setPendingAmount(currentPending);
 				estimate.setCreditFlag(true);
 				estimate.setCreditSettledFlag(false);
+				estimate = utilService.updatePaymentListForCreditEstimate(estimate, estimate.getPendingAmount());
+
 			} else if (currentPending.compareTo(overpaid) == 0) {
 				estimate.setPendingAmount(BigDecimal.ZERO);
 				boolean hasCredit = estimate.getPaymentSplitList().stream()
@@ -1611,6 +1615,7 @@ public class JobCardService {
 
 				estimate.setCreditFlag(hasCredit);
 				estimate.setCreditSettledFlag(hasCredit && estimate.getPendingAmount().compareTo(BigDecimal.ZERO) == 0);
+				estimate = utilService.updatePaymentListForCreditEstimate(estimate, estimate.getPendingAmount());
 
 			} else {
 
@@ -1698,6 +1703,8 @@ public class JobCardService {
 
 				estimate.setCreditFlag(hasCredit);
 				estimate.setCreditSettledFlag(hasCredit && newPending.compareTo(BigDecimal.ZERO) == 0);
+
+				estimate = utilService.updatePaymentListForCreditEstimate(estimate, newPending);
 			}
 		}
 
@@ -1747,15 +1754,7 @@ public class JobCardService {
 			// At UI side this extra amount goes as credit with add flag, but user will
 			// change it to CASH or UPI etc and saved with ADD flag to include as new
 			// payment
-			PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
-					.build();
-			List<PaymentSplit> splitList = invoice.getPaymentSplitList();
-			if (splitList != null && !splitList.isEmpty()) {
-				splitList.add(split);
-			} else {
-				splitList = new ArrayList<>();
-				splitList.add(split);
-			}
+			invoice = utilService.updatePaymentListForCreditInvoice(invoice, newPending);
 
 		} else {
 			// Overpayment: try to reduce credit payments first
@@ -1767,6 +1766,9 @@ public class JobCardService {
 				invoice.setPendingAmount(currentPending);
 				invoice.setCreditFlag(true);
 				invoice.setCreditSettledFlag(false);
+
+				invoice = utilService.updatePaymentListForCreditInvoice(invoice, invoice.getPendingAmount());
+
 			} else if (currentPending.compareTo(overpaid) == 0) {
 				invoice.setPendingAmount(BigDecimal.ZERO);
 				boolean hasCredit = invoice.getPaymentSplitList().stream()
@@ -1774,6 +1776,8 @@ public class JobCardService {
 
 				invoice.setCreditFlag(hasCredit);
 				invoice.setCreditSettledFlag(hasCredit && invoice.getPendingAmount().compareTo(BigDecimal.ZERO) == 0);
+
+				invoice = utilService.updatePaymentListForCreditInvoice(invoice, invoice.getPendingAmount());
 
 			} else {
 				// Remove from creditPaymentList (latest first)
@@ -1862,6 +1866,9 @@ public class JobCardService {
 
 				invoice.setCreditFlag(hasCredit);
 				invoice.setCreditSettledFlag(hasCredit && newPending.compareTo(BigDecimal.ZERO) == 0);
+
+				invoice = utilService.updatePaymentListForCreditInvoice(invoice, newPending);
+
 			}
 		}
 

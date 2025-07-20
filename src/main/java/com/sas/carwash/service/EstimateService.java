@@ -149,6 +149,8 @@ public class EstimateService {
 		filteredCreditPaymentList.forEach(split -> split.setFlag(null));
 		estimate.setCreditPaymentList(filteredCreditPaymentList);
 
+		estimate = utilService.updatePaymentListForCreditEstimate(estimate, estimate.getPendingAmount());
+
 		estimate = estimateRepository.save(estimate);
 		jobCard.setEstimateObjId(estimate.getId());
 		utilService.simpleSave(jobCard);

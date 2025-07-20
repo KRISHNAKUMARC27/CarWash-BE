@@ -39,6 +39,7 @@ public class PaymentsService {
 		Payments currPayments = findById(id);
 		currPayments = recordModifiedPayments(BigDecimal.ZERO, currPayments);
 		currPayments.setIsDeleted(true);
+		currPayments.setPaymentAmount(BigDecimal.ZERO);
 		paymentsRepository.save(currPayments);
 		//paymentsRepository.deleteById(id);
 	}
@@ -67,7 +68,7 @@ public class PaymentsService {
 		records = records.stream()
 				.filter(p -> p.getIsDeleted() == null || !p.getIsDeleted()) // exclude only if true
 				.collect(Collectors.toList());
-				
+
 		// Total Payments amount
 		BigDecimal total = records.stream()
 				.map(exp -> Optional.ofNullable(exp.getPaymentAmount()).orElse(BigDecimal.ZERO))

@@ -150,6 +150,8 @@ public class InvoiceService {
 		filteredCreditPaymentList.forEach(split -> split.setFlag(null));
 		invoice.setCreditPaymentList(filteredCreditPaymentList);
 
+		invoice = utilService.updatePaymentListForCreditInvoice(invoice, invoice.getPendingAmount());
+
 		invoice = invoiceRepository.save(invoice);
 		jobCard.setInvoiceObjId(invoice.getId());
 		utilService.simpleSave(jobCard);

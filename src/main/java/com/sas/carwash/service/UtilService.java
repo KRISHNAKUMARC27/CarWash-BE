@@ -1,7 +1,12 @@
 package com.sas.carwash.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -10,9 +15,12 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import com.sas.carwash.entity.Estimate;
+import com.sas.carwash.entity.Invoice;
 import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobCardCounters;
 import com.sas.carwash.entity.JobSpares;
+import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.JobCardRepository;
 import com.sas.carwash.repository.JobSparesRepository;
 
@@ -100,4 +108,49 @@ public class UtilService {
 	public JobSpares simpleSaveJobSpares(JobSpares jobSpares) {
 		return jobSparesRepository.save(jobSpares);
 	}
+
+    public Invoice updatePaymentListForCreditInvoice(Invoice invoice, BigDecimal newPending) {
+
+		PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
+				.paymentDate(LocalDateTime.now())
+				.build();
+		List<PaymentSplit> splitList = invoice.getPaymentSplitList();
+		// What we are doing here is we are trying to maintain only 1 CREDIT mode item
+		// in the payment list. Update with new Pending as CREDIT.
+		if (splitList != null && !splitList.isEmpty()) {
+			splitList = splitList.stream()
+					.filter(sp -> !"CREDIT".equals(sp.getPaymentMode()))
+					.collect(Collectors.toList());
+
+			splitList.add(split);
+			
+		} else {
+			splitList = new ArrayList<>();
+			splitList.add(split);
+		}
+		invoice.setPaymentSplitList(splitList);
+		return invoice;
+	}
+
+    public Estimate updatePaymentListForCreditEstimate(Estimate estimate, BigDecimal newPending) {
+        PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
+                .paymentDate(LocalDateTime.now())
+                .build();
+        List<PaymentSplit> splitList = estimate.getPaymentSplitList();
+        // What we are doing here is we are trying to maintain only 1 CREDIT mode item
+        // in the payment list. Update with new Pending as CREDIT.
+        if (splitList != null && !splitList.isEmpty()) {
+            splitList = splitList.stream()
+                    .filter(sp -> !"CREDIT".equals(sp.getPaymentMode()))
+                    .collect(Collectors.toList());
+
+            splitList.add(split);
+        } else {
+            splitList = new ArrayList<>();
+            splitList.add(split);
+        }
+
+        estimate.setPaymentSplitList(splitList);
+        return estimate;
+    }
 }
