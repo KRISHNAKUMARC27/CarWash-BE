@@ -210,8 +210,19 @@ public class InvoiceService {
 				CreditPayment creditPayment = CreditPayment.builder().amount(pendingAmount)
 						.paymentMode(multiCreditPayment.getPaymentMode()).comment(multiCreditPayment.getComment())
 						.creditDate(LocalDateTime.now()).build();
-				creditPaymentList.add(creditPayment);
+				Payments payments = Payments.builder()
+						.paymentAmount(creditPayment.getAmount())
+						.paymentDate(creditPayment.getCreditDate())
+						.paymentMode(creditPayment.getPaymentMode())
+						.category("INVOICE")
+						.categoryFieldId(invoice.getInvoiceId())
+						.isCreditPayment(true)
+						.build();
+				payments = paymentsService.save(payments);
+				creditPayment.setPaymentId(payments.getId());
 
+				creditPaymentList.add(creditPayment);
+				
 				BigDecimal grandTotal = invoice.getGrandTotal();
 
 				BigDecimal totalPaidExcludingCredit = invoice.getPaymentSplitList().stream()
@@ -269,16 +280,15 @@ public class InvoiceService {
 
 		for (Invoice invoice : invoiceList) {
 			BigDecimal invoicePendingAmount = invoice.getPendingAmount();
-			if (invoicePendingAmount.compareTo(multiCreditPayment.getAmount()) >= 0) {
-				settleMap.put(invoice, multiCreditPayment.getAmount());
-				BigDecimal remainderAmount = multiCreditPayment.getAmount().subtract(invoicePendingAmount);
-				multiCreditPayment.setAmount(remainderAmount);
-				break;
-			} else {
+			if (multiCreditPayment.getAmount().compareTo(invoicePendingAmount) >= 0) {
 				settleMap.put(invoice, invoicePendingAmount);
-				BigDecimal remainderAmount = multiCreditPayment.getAmount().subtract(invoicePendingAmount);
-				multiCreditPayment.setAmount(remainderAmount);
+				multiCreditPayment.setAmount(multiCreditPayment.getAmount().subtract(invoicePendingAmount));
+			} else {
+				settleMap.put(invoice, multiCreditPayment.getAmount());
+				multiCreditPayment.setAmount(BigDecimal.ZERO);
+				break;
 			}
+
 		}
 
 		return settleMap;

@@ -210,6 +210,17 @@ public class EstimateService {
 				CreditPayment creditPayment = CreditPayment.builder().amount(pendingAmount)
 						.paymentMode(multiCreditPayment.getPaymentMode()).comment(multiCreditPayment.getComment())
 						.creditDate(LocalDateTime.now()).build();
+				Payments payments = Payments.builder()
+						.paymentAmount(creditPayment.getAmount())
+						.paymentDate(creditPayment.getCreditDate())
+						.paymentMode(creditPayment.getPaymentMode())
+						.category("ESTIMATE")
+						.categoryFieldId(estimate.getEstimateId())
+						.isCreditPayment(true)
+						.build();
+				payments = paymentsService.save(payments);
+				creditPayment.setPaymentId(payments.getId());
+
 				creditPaymentList.add(creditPayment);
 
 				BigDecimal grandTotal = estimate.getGrandTotal();
@@ -273,16 +284,15 @@ public class EstimateService {
 
 		for (Estimate estimate : estimateList) {
 			BigDecimal estimatePendingAmount = estimate.getPendingAmount();
-			if (estimatePendingAmount.compareTo(multiCreditPayment.getAmount()) >= 0) {
-				settleMap.put(estimate, multiCreditPayment.getAmount());
-				BigDecimal remainderAmount = multiCreditPayment.getAmount().subtract(estimatePendingAmount);
-				multiCreditPayment.setAmount(remainderAmount);
-				break;
-			} else {
+			if (multiCreditPayment.getAmount().compareTo(estimatePendingAmount) >= 0) {
 				settleMap.put(estimate, estimatePendingAmount);
-				BigDecimal remainderAmount = multiCreditPayment.getAmount().subtract(estimatePendingAmount);
-				multiCreditPayment.setAmount(remainderAmount);
+				multiCreditPayment.setAmount(multiCreditPayment.getAmount().subtract(estimatePendingAmount));
+			} else {
+				settleMap.put(estimate, multiCreditPayment.getAmount());
+				multiCreditPayment.setAmount(BigDecimal.ZERO);
+				break;
 			}
+
 		}
 
 		return settleMap;
