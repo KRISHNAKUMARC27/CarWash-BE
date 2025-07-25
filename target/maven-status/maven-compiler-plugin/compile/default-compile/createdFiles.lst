@@ -30,6 +30,7 @@ com\sas\carwash\entity\ExpenseCategory.class
 com\sas\carwash\entity\ServiceInventory$ServiceInventoryBuilder.class
 com\sas\carwash\entity\JobCard.class
 com\sas\carwash\entity\JobSparesInfo.class
+com\sas\carwash\model\PaymentModification$PaymentModificationBuilder.class
 com\sas\carwash\email\EmailDetails$EmailDetailsBuilder.class
 com\sas\carwash\repository\ExternalWorkInventoryFilter.class
 com\sas\carwash\entity\Expense.class
@@ -60,6 +61,7 @@ com\sas\carwash\repository\ServiceInventoryFilter.class
 com\sas\carwash\service\EstimateService.class
 com\sas\carwash\model\CreditPayment.class
 com\sas\carwash\repository\SparesCategoryRepository.class
+com\sas\carwash\model\PaymentModification.class
 com\sas\carwash\entity\ReceiptInvoice.class
 com\sas\carwash\controller\EstimateController.class
 com\sas\carwash\entity\SparesCategory.class

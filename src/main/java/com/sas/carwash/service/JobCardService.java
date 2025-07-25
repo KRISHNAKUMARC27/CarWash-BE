@@ -30,8 +30,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.Date;
 import java.util.Calendar;
-import java.util.Collections;
-
 import org.springframework.scheduling.annotation.Scheduled;
 import com.sas.carwash.entity.Estimate;
 import com.sas.carwash.entity.Invoice;
@@ -46,7 +44,6 @@ import com.sas.carwash.entity.SparesInventory;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.FastJobCardRecord;
 import com.sas.carwash.model.FullJobCardRecord;
-import com.sas.carwash.model.PaymentModification;
 import com.sas.carwash.model.PaymentSplit;
 import com.sas.carwash.repository.EstimateRepository;
 import com.sas.carwash.repository.InvoiceRepository;
@@ -78,6 +75,7 @@ public class JobCardService {
 	private final PdfUtils pdfUtils;
 	private final PaymentsService paymentsService;
 	private final UtilService utilService;
+	private final ServicePackageService servicePackageService;
 
 	@Value("${server.port}")
 	private String serverPort;
@@ -373,6 +371,27 @@ public class JobCardService {
 		return jobSpares;
 	}
 
+	private JobSpares calculateGrandTotal(JobSpares origJobSpares) {
+		// Calculate total spares value
+		BigDecimal totalSparesValue = origJobSpares.getJobSparesInfo() != null
+				? origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
+						.reduce(BigDecimal.ZERO, BigDecimal::add)
+				: BigDecimal.ZERO;
+
+		// Calculate total Service value
+		BigDecimal totalServiceValue = origJobSpares.getJobServiceInfo() != null
+				? origJobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
+						.reduce(BigDecimal.ZERO, BigDecimal::add)
+				: BigDecimal.ZERO;
+
+		// Calculate the grand total
+		BigDecimal grandTotal = totalSparesValue.add(totalServiceValue);
+		origJobSpares.setGrandTotal(grandTotal);
+		origJobSpares.setTotalServiceValue(totalServiceValue);
+		origJobSpares.setTotalSparesValue(totalSparesValue);
+		return origJobSpares;
+	}
+
 	private JobSpares calculateGSTAndUpdateFields(JobSpares jobSpares) {
 
 		if (jobSpares.getJobServiceInfo() != null) {
@@ -454,7 +473,7 @@ public class JobCardService {
 					if (origJobSpares.getJobCloseDate() == null)
 						origJobSpares.setJobCloseDate(jobCloseDate);
 
-					calculateTotals(origJobSpares);
+					// calculateTotals(origJobSpares);
 					jobSparesRepository.save(origJobSpares);
 				}
 			}
@@ -494,67 +513,51 @@ public class JobCardService {
 	// }
 	// }
 
-	private JobSpares calculateGrandTotal(JobSpares origJobSpares) {
-		// Calculate total spares value
-		BigDecimal totalSparesValue = origJobSpares.getJobSparesInfo() != null
-				? origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
-						.reduce(BigDecimal.ZERO, BigDecimal::add)
-				: BigDecimal.ZERO;
 
-		// Calculate total Service value
-		BigDecimal totalServiceValue = origJobSpares.getJobServiceInfo() != null
-				? origJobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
-						.reduce(BigDecimal.ZERO, BigDecimal::add)
-				: BigDecimal.ZERO;
+	// private void calculateTotals(JobSpares origJobSpares) {
+	// // Calculate total spares value
+	// BigDecimal totalSparesValue = origJobSpares.getJobSparesInfo() != null
+	// ?
+	// origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
+	// .reduce(BigDecimal.ZERO, BigDecimal::add)
+	// : BigDecimal.ZERO;
 
-		// Calculate the grand total
-		BigDecimal grandTotal = totalSparesValue.add(totalServiceValue);
-		origJobSpares.setGrandTotal(grandTotal);
-		origJobSpares.setTotalServiceValue(totalServiceValue);
-		origJobSpares.setTotalSparesValue(totalSparesValue);
-		return origJobSpares;
-	}
+	// // Calculate total Service value
+	// BigDecimal totalServiceValue = origJobSpares.getJobServiceInfo() != null
+	// ?
+	// origJobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
+	// .reduce(BigDecimal.ZERO, BigDecimal::add)
+	// : BigDecimal.ZERO;
 
-	private void calculateTotals(JobSpares origJobSpares) {
-		// Calculate total spares value
-		BigDecimal totalSparesValue = origJobSpares.getJobSparesInfo() != null
-				? origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
-						.reduce(BigDecimal.ZERO, BigDecimal::add)
-				: BigDecimal.ZERO;
+	// // Calculate the grand total
+	// BigDecimal grandTotal = totalSparesValue.add(totalServiceValue);
+	// origJobSpares.setGrandTotal(grandTotal);
+	// origJobSpares.setTotalServiceValue(totalServiceValue);
+	// origJobSpares.setTotalSparesValue(totalSparesValue);
 
-		// Calculate total Service value
-		BigDecimal totalServiceValue = origJobSpares.getJobServiceInfo() != null
-				? origJobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
-						.reduce(BigDecimal.ZERO, BigDecimal::add)
-				: BigDecimal.ZERO;
+	// // Validate the grand total//TODO CHECK IF BELOW LINE IS CORRECT ??
+	// // if (origJobSpares.getGrandTotal() != null &&
+	// // !grandTotal.equals(origJobSpares.getGrandTotal())) {
+	// // throw new Exception("Total amount calculation is wrong in UI");
+	// // }
 
-		// Calculate the grand total
-		BigDecimal grandTotal = totalSparesValue.add(totalServiceValue);
-		origJobSpares.setGrandTotal(grandTotal);
-		origJobSpares.setTotalServiceValue(totalServiceValue);
-		origJobSpares.setTotalSparesValue(totalSparesValue);
+	// BigDecimal totalGstSparesValue = origJobSpares.getJobSparesInfo() != null
+	// ?
+	// origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
+	// .reduce(BigDecimal.ZERO, BigDecimal::add)
+	// : BigDecimal.ZERO;
 
-		// Validate the grand total//TODO CHECK IF BELOW LINE IS CORRECT ??
-		// if (origJobSpares.getGrandTotal() != null &&
-		// !grandTotal.equals(origJobSpares.getGrandTotal())) {
-		// throw new Exception("Total amount calculation is wrong in UI");
-		// }
+	// BigDecimal totalGstServiceValue = origJobSpares.getJobServiceInfo() != null
+	// ?
+	// origJobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
+	// .reduce(BigDecimal.ZERO, BigDecimal::add)
+	// : BigDecimal.ZERO;
 
-		BigDecimal totalGstSparesValue = origJobSpares.getJobSparesInfo() != null
-				? origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
-						.reduce(BigDecimal.ZERO, BigDecimal::add)
-				: BigDecimal.ZERO;
-
-		BigDecimal totalGstServiceValue = origJobSpares.getJobServiceInfo() != null
-				? origJobSpares.getJobServiceInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
-						.reduce(BigDecimal.ZERO, BigDecimal::add)
-				: BigDecimal.ZERO;
-
-		BigDecimal grandGstTotal = totalGstSparesValue.add(totalGstServiceValue);
-		origJobSpares.setGrandTotalWithGST(grandGstTotal);
-		origJobSpares.setTotalSparesValueWithGST(totalGstSparesValue);
-		origJobSpares.setTotalServiceValueWithGST(totalGstServiceValue);
-	}
+	// BigDecimal grandGstTotal = totalGstSparesValue.add(totalGstServiceValue);
+	// origJobSpares.setGrandTotalWithGST(grandGstTotal);
+	// origJobSpares.setTotalSparesValueWithGST(totalGstSparesValue);
+	// origJobSpares.setTotalServiceValueWithGST(totalGstServiceValue);
+	// }
 
 	public ResponseEntity<?> generateJobCardPdf(String id) throws Exception {
 

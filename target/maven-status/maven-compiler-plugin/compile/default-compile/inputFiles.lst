@@ -81,6 +81,7 @@ D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\AttendancePhotos.
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\EmployeeSalary.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\ReceiptEstimate.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\controller\JobCardController.java
+D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\PaymentModification.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\model\AuthRequest.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\repository\ExternalWorkInventoryRepository.java
 D:\Work\EROADS\CarWash-BE\src\main\java\com\sas\carwash\entity\Estimate.java
