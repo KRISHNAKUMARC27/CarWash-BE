@@ -3,6 +3,12 @@
 
 <head>
 	<style>
+		@page {
+			@bottom-right {
+				content: "Page " counter(page) " of " counter(pages) " | Estimate: [[${estimateNo}]]";
+			}
+		}
+
 		body {
 			font-family: Arial, sans-serif;
 			font-size: 12px;
@@ -86,9 +92,9 @@
 			background-color: #f2f2f2;
 		}
 
-		.nested-table tbody tr:nth-child(odd) {
+		/* .nested-table tbody tr:nth-child(odd) {
 			background-color: #f9f9f9;
-		}
+		} */
 
 		.nested-table tr {
 			page-break-inside: avoid;
@@ -168,10 +174,31 @@
 		.page-break {
 			page-break-before: always;
 		}
+
+		.section-footer {
+			page-break-inside: avoid;
+			break-inside: avoid;
+		}
 	</style>
 </head>
 
 <body>
+	<div style="
+	    position: fixed;
+	    top: 45%;
+	    width: 100%;
+	    text-align: center;
+	    font-size: 70px;
+	    font-weight: bold;
+	    color: #cccccc;
+	    -fs-transform: rotate(-45deg);
+	    transform: rotate(-45deg);
+	    opacity: 0.15;
+	    z-index: -1;
+	    pointer-events: none;">
+		<span th:text="${paymentStatus}">PAID</span>
+	</div>
+
 	<p class="text-center" style="margin-bottom: 0px;">ESTIMATE</p>
 
 	<table>
@@ -242,17 +269,23 @@
 			<td colspan="2">&nbsp;</td>
 		</tr>
 
-		<tr>
-			<td colspan="2" class="net-amount">
-				Net Amount: <span th:text="${netAmount}"></span>
-			</td>
-		</tr>
+		<td colspan="2">
+			<div class="section-footer">
+				<table style="width: 100%;">
+					<tr>
+						<td colspan="2" class="net-amount">
+							Net Amount: <span th:text="${netAmount}"></span>
+						</td>
+					</tr>
 
-		<tr>
-			<td colspan="2" class="total-row text-left">
-				Amount in Words: <span th:text="${amountInWords}"></span>
-			</td>
-		</tr>
+					<tr>
+						<td colspan="2" class="total-row text-left">
+							Amount in Words: <span th:text="${amountInWords}"></span>
+						</td>
+					</tr>
+				</table>
+			</div>
+		</td>
 	</table>
 </body>
 

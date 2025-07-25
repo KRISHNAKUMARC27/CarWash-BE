@@ -2,15 +2,18 @@ package com.sas.carwash.service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -267,7 +270,8 @@ public class JobCardService {
 			// Loop through the incoming job spares list
 			for (JobSparesInfo jobSparesInfo : jobSparesInfoList) {
 				SparesInventory spares = sparesService.findById(jobSparesInfo.getSparesId());
-				SparesInventory origspares = sparesService.findById(jobSparesInfo.getSparesId()); //TODO DEEP CLONE CAN BE DONE HERE
+				SparesInventory origspares = sparesService.findById(jobSparesInfo.getSparesId()); // TODO DEEP CLONE CAN
+																									// BE DONE HERE
 				if (spares == null) {
 					throw new Exception("Spares ID " + jobSparesInfo.getSparesId() + " not found in inventory.");
 				}
@@ -531,8 +535,9 @@ public class JobCardService {
 		origJobSpares.setTotalSparesValue(totalSparesValue);
 
 		// Validate the grand total//TODO CHECK IF BELOW LINE IS CORRECT ??
-		// if (origJobSpares.getGrandTotal() != null && !grandTotal.equals(origJobSpares.getGrandTotal())) {
-		// 	throw new Exception("Total amount calculation is wrong in UI");
+		// if (origJobSpares.getGrandTotal() != null &&
+		// !grandTotal.equals(origJobSpares.getGrandTotal())) {
+		// throw new Exception("Total amount calculation is wrong in UI");
 		// }
 
 		BigDecimal totalGstSparesValue = origJobSpares.getJobSparesInfo() != null
@@ -1296,41 +1301,31 @@ public class JobCardService {
 
 	public ResponseEntity<ByteArrayResource> invoicePdf(String id) throws Exception {
 
-		JobCard jobCard = jobCardRepository.findById(id).orElse(null);
-		JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
-		Invoice invoice = invoiceRepository.findById(jobCard.getInvoiceObjId()).orElse(null);
+		JobCard jobCard = jobCardRepository.findById(id)
+				.orElseThrow(() -> new Exception("Cannot generate Invoice. JobCard not found for id " + id));
 
-		if (jobCard == null) {
-			throw new Exception("Cannot generate Invoice. JobCard not found for id " + id);
+		JobSpares jobSpares = jobSparesRepository.findById(id)
+				.orElseThrow(() -> new Exception("Cannot generate Invoice. JobSpares not found for id " + id));
+
+		Invoice invoice = invoiceRepository.findById(jobCard.getInvoiceObjId())
+				.orElseThrow(() -> new Exception(
+						"Cannot generate Invoice. Invoice not found for id " + jobCard.getInvoiceObjId()));
+
+		Set<String> modes = new LinkedHashSet<>();
+
+		invoice.getPaymentSplitList().stream()
+				.filter(p -> !p.getPaymentMode().equals("CREDIT"))
+				.map(PaymentSplit::getPaymentMode)
+				.forEach(modes::add);
+
+		if (modes.isEmpty()) {
+			invoice.getCreditPaymentList().stream()
+					.filter(p -> !p.getPaymentMode().equals("CREDIT"))
+					.map(CreditPayment::getPaymentMode)
+					.forEach(modes::add);
 		}
 
-		if (jobSpares == null) {
-			throw new Exception("Cannot generate Invoice. JobSpares not found for id " + id);
-		}
-
-		if (invoice == null) {
-			throw new Exception("Cannot generate Invoice. Invoice not found for id " + id);
-		}
-
-		String paymentMode = "";
-		// for (PaymentSplit payment : invoice.getPaymentSplitList()) {
-		// if (!payment.getPaymentMode().equals("CREDIT")) {
-		// paymentMode = paymentMode + payment.getPaymentMode() + " ";
-		// }
-		// }
-		paymentMode = invoice.getPaymentSplitList().stream()
-				.filter(payment -> !payment.getPaymentMode().equals("CREDIT")).map(s -> s.getPaymentMode())
-				.collect(Collectors.joining(", "));
-		// NEED to work whether to consider CREDIT list also. Also consider unique
-		// value. May be use Set<String>
-		// if (paymentMode.equals("")) {
-		// paymentMode = invoice.getCreditPaymentList().get(0).getPaymentMode();
-		// }
-		if (paymentMode.equals("")) {
-			paymentMode = invoice.getCreditPaymentList().stream()
-					.filter(payment -> !payment.getPaymentMode().equals("CREDIT")).map(s -> s.getPaymentMode())
-					.collect(Collectors.joining(", "));
-		}
+		String paymentMode = String.join(", ", modes);
 
 		Map<String, Object> data = new HashMap<>();
 		data.put("vehNo", jobCard.getVehicleRegNo());
@@ -1344,9 +1339,26 @@ public class JobCardService {
 		data.put("nextServiceKms", jobCard.getKiloMeters() != null ? jobCard.getKiloMeters() + 3000 : null);
 
 		data.put("totalTaxAmt", jobSpares.getGrandTotalWithGST().subtract(jobSpares.getGrandTotal()));
-		data.put("roundOff", "");
+		BigDecimal rounded = invoice.getGrandTotal().setScale(0, RoundingMode.HALF_UP);
+		BigDecimal roundOff = rounded.subtract(invoice.getGrandTotal());
+		data.put("roundOff", roundOff);
+
 		data.put("netAmount", invoice.getGrandTotal());
 		data.put("amountInWords", NumberToWordsConverter.convert(invoice.getGrandTotal()));
+
+		BigDecimal pending = invoice.getPendingAmount();
+		BigDecimal total = invoice.getGrandTotal();
+
+		String paymentStatus;
+		if (pending.compareTo(BigDecimal.ZERO) == 0) {
+			paymentStatus = "PAID";
+		} else if (pending.compareTo(total) < 0) {
+			paymentStatus = "PARTIALLY PAID";
+		} else {
+			paymentStatus = "NOT PAID";
+		}
+
+		data.put("paymentStatus", paymentStatus);
 
 		Map<BigDecimal, BigDecimal> taxMap = new HashMap<>();
 		int count = 1;
@@ -1390,14 +1402,23 @@ public class JobCardService {
 
 		}
 
-		while (count < 15) {
-			productList.add(Map.of("sno", "", "name", "", "hsnCode", "\t", "qty", "\t", "rate", "\t", "gst", "\t",
-					"discount", "\t", "amount", "\t"));
-			count++;
-		}
+		// while (count < 10) {
+		// productList.add(Map.of("sno", "", "name", "", "hsnCode", "\t", "qty", "\t",
+		// "rate", "\t", "gst", "\t",
+		// "discount", "\t", "amount", "\t"));
+		// count++;
+		// }
 
-		if (count > 15 && count < 40) {
-			data.put("pagebreak", true);
+		// if (count > 10 && count < 40) {
+		// data.put("pagebreak", true);
+		// }
+		int minRows = 10;
+		int currentRows = productList.size();
+
+		for (int i = currentRows; i < minRows; i++) {
+			productList.add(Map.of(
+					"sno", "", "name", "", "hsnCode", "", "qty", "", "rate", "", "gst", "", "discount", "", "amount",
+					""));
 		}
 
 		productList.add(Map.of("sno", "", "name", "E & OE", "hsnCode", "", "qty", totalQty, "rate", "", "gst", "",
@@ -1427,41 +1448,31 @@ public class JobCardService {
 
 	public ResponseEntity<ByteArrayResource> estimatePdf(String id) throws Exception {
 
-		JobCard jobCard = jobCardRepository.findById(id).orElse(null);
-		JobSpares jobSpares = jobSparesRepository.findById(id).orElse(null);
-		Estimate estimate = estimateRepository.findById(jobCard.getEstimateObjId()).orElse(null);
+		JobCard jobCard = jobCardRepository.findById(id)
+				.orElseThrow(() -> new Exception("Cannot generate Estimate. JobCard not found for id " + id));
 
-		if (jobCard == null) {
-			throw new Exception("Cannot generate Estimate. JobCard not found for id " + id);
+		JobSpares jobSpares = jobSparesRepository.findById(id)
+				.orElseThrow(() -> new Exception("Cannot generate Estimate. JobSpares not found for id " + id));
+
+		Estimate estimate = estimateRepository.findById(jobCard.getEstimateObjId())
+				.orElseThrow(() -> new Exception(
+						"Cannot generate Estimate. Estimate not found for id " + jobCard.getEstimateObjId()));
+
+		Set<String> modes = new LinkedHashSet<>();
+
+		estimate.getPaymentSplitList().stream()
+				.filter(p -> !p.getPaymentMode().equals("CREDIT"))
+				.map(PaymentSplit::getPaymentMode)
+				.forEach(modes::add);
+
+		if (modes.isEmpty()) {
+			estimate.getCreditPaymentList().stream()
+					.filter(p -> !p.getPaymentMode().equals("CREDIT"))
+					.map(CreditPayment::getPaymentMode)
+					.forEach(modes::add);
 		}
 
-		if (jobSpares == null) {
-			throw new Exception("Cannot generate Estimate. JobSpares not found for id " + id);
-		}
-
-		if (estimate == null) {
-			throw new Exception("Cannot generate Estimate. Estimate not found for id " + id);
-		}
-
-		String paymentMode = "";
-		// for (PaymentSplit payment : estimate.getPaymentSplitList()) {
-		// if (!payment.getPaymentMode().equals("CREDIT")) {
-		// paymentMode = paymentMode + payment.getPaymentMode() + " ";
-		// }
-		// }
-		paymentMode = estimate.getPaymentSplitList().stream()
-				.filter(payment -> !payment.getPaymentMode().equals("CREDIT")).map(s -> s.getPaymentMode())
-				.collect(Collectors.joining(", "));
-		// NEED to work whether to consider CREDIT list also. Also consider unique
-		// value. May be use Set<String>
-		// if (paymentMode.equals("")) {
-		// paymentMode = estimate.getCreditPaymentList().get(0).getPaymentMode();
-		// }
-		if (paymentMode.equals("")) {
-			paymentMode = estimate.getCreditPaymentList().stream()
-					.filter(payment -> !payment.getPaymentMode().equals("CREDIT")).map(s -> s.getPaymentMode())
-					.collect(Collectors.joining(", "));
-		}
+		String paymentMode = String.join(", ", modes);
 
 		Map<String, Object> data = new HashMap<>();
 		data.put("vehNo", jobCard.getVehicleRegNo());
@@ -1479,6 +1490,20 @@ public class JobCardService {
 
 		int count = 1;
 		BigDecimal totalQty = BigDecimal.ZERO;
+
+		BigDecimal pending = estimate.getPendingAmount();
+		BigDecimal total = estimate.getGrandTotal();
+
+		String paymentStatus;
+		if (pending.compareTo(BigDecimal.ZERO) == 0) {
+			paymentStatus = "PAID";
+		} else if (pending.compareTo(total) < 0) {
+			paymentStatus = "PARTIALLY PAID";
+		} else {
+			paymentStatus = "NOT PAID";
+		}
+
+		data.put("paymentStatus", paymentStatus);
 
 		List<Map<String, Object>> productList = new ArrayList<>();
 		if (jobSpares.getJobServiceInfo() != null) {
@@ -1511,14 +1536,23 @@ public class JobCardService {
 
 		}
 
-		while (count < 15) {
-			productList.add(Map.of("sno", "", "name", "", "hsnCode", "\t", "qty", "\t", "rate", "\t", "discount", "\t",
-					"amount", "\t"));
-			count++;
-		}
+		// while (count < 15) {
+		// productList.add(Map.of("sno", "", "name", "", "hsnCode", "\t", "qty", "\t",
+		// "rate", "\t", "discount", "\t",
+		// "amount", "\t"));
+		// count++;
+		// }
 
-		if (count > 15 && count < 40) {
-			data.put("pagebreak", true);
+		// if (count > 15 && count < 40) {
+		// data.put("pagebreak", true);
+		// }
+		int minRows = 10;
+		int currentRows = productList.size();
+
+		for (int i = currentRows; i < minRows; i++) {
+			productList.add(Map.of(
+					"sno", "", "name", "", "hsnCode", "", "qty", "", "rate", "", "discount", "", "amount",
+					""));
 		}
 
 		productList.add(Map.of("sno", "", "name", "E & OE", "hsnCode", "", "qty", totalQty, "rate", "", "discount", "",
@@ -1551,165 +1585,179 @@ public class JobCardService {
 
 	}
 
-	// public void recalculateAndUpdateEstimate(JobSpares jobSpares) throws Exception {
-	// 	Estimate estimate = estimateRepository.findById(jobSpares.getEstimateObjId())
-	// 			.orElseThrow(() -> new RuntimeException("Estimate ID not found"));
+	// public void recalculateAndUpdateEstimate(JobSpares jobSpares) throws
+	// Exception {
+	// Estimate estimate = estimateRepository.findById(jobSpares.getEstimateObjId())
+	// .orElseThrow(() -> new RuntimeException("Estimate ID not found"));
 
-	// 	BigDecimal newGrandTotal = Optional.ofNullable(jobSpares.getGrandTotal()).orElse(BigDecimal.ZERO);
-	// 	BigDecimal oldGrandTotal = Optional.ofNullable(estimate.getGrandTotal()).orElse(BigDecimal.ZERO);
-	// 	BigDecimal difference = newGrandTotal.subtract(oldGrandTotal);
+	// BigDecimal newGrandTotal =
+	// Optional.ofNullable(jobSpares.getGrandTotal()).orElse(BigDecimal.ZERO);
+	// BigDecimal oldGrandTotal =
+	// Optional.ofNullable(estimate.getGrandTotal()).orElse(BigDecimal.ZERO);
+	// BigDecimal difference = newGrandTotal.subtract(oldGrandTotal);
 
-	// 	// If no change, return
-	// 	if (difference.compareTo(BigDecimal.ZERO) == 0) {
-	// 		return;
-	// 	}
-
-	// 	// Set new grand total
-	// 	estimate.setGrandTotal(newGrandTotal);
-
-	// 	// Calculate total amount paid so far
-	// 	BigDecimal totalPaid = estimate.getPaymentSplitList().stream()
-	// 			.filter(p -> !"CREDIT".equalsIgnoreCase(p.getPaymentMode()))
-	// 			.map(p -> Optional.ofNullable(p.getPaymentAmount()).orElse(BigDecimal.ZERO))
-	// 			.reduce(BigDecimal.ZERO, BigDecimal::add);
-
-	// 	BigDecimal totalCreditPaid = estimate.getCreditPaymentList().stream()
-	// 			.map(c -> Optional.ofNullable(c.getAmount()).orElse(BigDecimal.ZERO))
-	// 			.reduce(BigDecimal.ZERO, BigDecimal::add);
-
-	// 	BigDecimal totalActualPaid = totalPaid.add(totalCreditPaid);
-	// 	BigDecimal newPending = newGrandTotal.subtract(totalActualPaid).max(BigDecimal.ZERO);
-
-	// 	// If new total is MORE than old
-	// 	if (difference.compareTo(BigDecimal.ZERO) > 0) {
-	// 		// Increase pending amount
-	// 		//BigDecimal newPending = estimate.getPendingAmount().add(difference);
-	// 		estimate.setPendingAmount(newPending);
-
-	// 		// Mark as credit
-	// 		estimate.setCreditFlag(true);
-	// 		estimate.setCreditSettledFlag(false);
-
-	// 		// This is a bill reopen scenario. The flag is ADD because there is payments
-	// 		// with credit mode are ignored for any flags.
-	// 		// At UI side this extra amount goes as credit with add flag, but user will
-	// 		// change it to CASH or UPI etc and saved with ADD flag to include as new
-	// 		// payment
-	// 		estimate = utilService.updatePaymentListForCreditEstimate(estimate, newPending);
-
-	// 	} else {
-	// 		// Overpayment: try to reduce credit payments first
-	// 		//BigDecimal overpaid = difference.abs(); // positive amount to reduce
-	// 		BigDecimal overpaid = totalActualPaid.subtract(newGrandTotal);
-
-	// 		if (overpaid.compareTo(BigDecimal.ZERO) <= 0) {
-	// 			estimate.setPendingAmount(newPending);
-
-	// 			boolean hasCredit = estimate.getPaymentSplitList().stream()
-	// 					.anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
-
-	// 			estimate.setCreditFlag(hasCredit);
-	// 			estimate.setCreditSettledFlag(hasCredit && newPending.compareTo(BigDecimal.ZERO) == 0);
-
-	// 			estimate = utilService.updatePaymentListForCreditEstimate(estimate, newPending);
-				
-	// 		} else {
-
-	// 			// Remove from creditPaymentList (latest first)
-	// 			List<CreditPayment> creditPayments = Optional.ofNullable(estimate.getCreditPaymentList())
-	// 					.orElse(new ArrayList<>());
-	// 			creditPayments.sort(Comparator.comparing(CreditPayment::getCreditDate).reversed());
-
-	// 			Iterator<CreditPayment> cpIterator = creditPayments.iterator();
-	// 			while (cpIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
-	// 				CreditPayment cp = cpIterator.next();
-	// 				BigDecimal amt = cp.getAmount();
-
-	// 				if (overpaid.compareTo(amt) >= 0) {
-	// 					overpaid = overpaid.subtract(amt);
-	// 					cpIterator.remove(); // remove entire payment
-
-	// 					// inform payment service
-	// 					paymentsService.deleteById(cp.getPaymentId());
-	// 				} else {
-	// 					cp.setAmount(amt.subtract(overpaid));
-	// 					overpaid = BigDecimal.ZERO;
-
-	// 					// inform payment service
-	// 					Payments payments = paymentsService.findById(cp.getPaymentId());
-
-	// 					// record modified payments.
-	// 					payments = paymentsService.recordModifiedPayments(cp.getAmount(), payments);
-
-	// 					payments.setPaymentAmount(cp.getAmount());
-	// 					payments.setPaymentMode(cp.getPaymentMode());
-	// 					paymentsService.save(payments);
-	// 				}
-	// 			}
-
-	// 			// Remove from paymentSplitList (excluding CREDIT)
-	// 			List<PaymentSplit> splits = Optional.ofNullable(estimate.getPaymentSplitList())
-	// 					.orElse(new ArrayList<>());
-	// 			splits.sort(Comparator.comparing(PaymentSplit::getPaymentAmount).reversed());
-
-	// 			Iterator<PaymentSplit> psIterator = splits.iterator();
-	// 			while (psIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
-	// 				PaymentSplit ps = psIterator.next();
-	// 				if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
-	// 					continue;
-
-	// 				BigDecimal amt = ps.getPaymentAmount();
-	// 				if (overpaid.compareTo(amt) >= 0) {
-	// 					overpaid = overpaid.subtract(amt);
-	// 					psIterator.remove();
-
-	// 					// inform payment service
-	// 					paymentsService.deleteById(ps.getPaymentId());
-	// 				} else {
-	// 					ps.setPaymentAmount(amt.subtract(overpaid));
-	// 					overpaid = BigDecimal.ZERO;
-
-	// 					// inform payment service
-	// 					Payments payments = paymentsService.findById(ps.getPaymentId());
-
-	// 					// record modified payments.
-	// 					payments = paymentsService.recordModifiedPayments(ps.getPaymentAmount(), payments);
-
-	// 					payments.setPaymentAmount(ps.getPaymentAmount());
-	// 					payments.setPaymentMode(ps.getPaymentMode());
-	// 					paymentsService.save(payments);
-	// 				}
-	// 			}
-
-	// 			// Recalculate total paid after adjustment
-	// 			totalPaid = splits.stream().filter(p -> !"CREDIT".equalsIgnoreCase(p.getPaymentMode()))
-	// 					.map(p -> Optional.ofNullable(p.getPaymentAmount()).orElse(BigDecimal.ZERO))
-	// 					.reduce(BigDecimal.ZERO, BigDecimal::add);
-
-	// 			totalCreditPaid = creditPayments.stream()
-	// 					.map(p -> Optional.ofNullable(p.getAmount()).orElse(BigDecimal.ZERO))
-	// 					.reduce(BigDecimal.ZERO, BigDecimal::add);
-
-	// 			totalActualPaid = totalPaid.add(totalCreditPaid);
-
-	// 			// New pending
-	// 			newPending = newGrandTotal.subtract(totalActualPaid).max(BigDecimal.ZERO);
-	// 			estimate.setPendingAmount(newPending.max(BigDecimal.ZERO)); // no negative pending
-
-	// 			// Credit flags
-	// 			boolean hasCredit = splits.stream().anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
-
-	// 			estimate.setCreditFlag(hasCredit);
-	// 			estimate.setCreditSettledFlag(hasCredit && newPending.compareTo(BigDecimal.ZERO) == 0);
-
-	// 			estimate = utilService.updatePaymentListForCreditEstimate(estimate, newPending);
-	// 		}
-	// 	}
-
-	// 	// Save back the updated estimate (pseudo code - use repo)
-	// 	estimateRepository.save(estimate);
+	// // If no change, return
+	// if (difference.compareTo(BigDecimal.ZERO) == 0) {
+	// return;
 	// }
 
+	// // Set new grand total
+	// estimate.setGrandTotal(newGrandTotal);
+
+	// // Calculate total amount paid so far
+	// BigDecimal totalPaid = estimate.getPaymentSplitList().stream()
+	// .filter(p -> !"CREDIT".equalsIgnoreCase(p.getPaymentMode()))
+	// .map(p -> Optional.ofNullable(p.getPaymentAmount()).orElse(BigDecimal.ZERO))
+	// .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+	// BigDecimal totalCreditPaid = estimate.getCreditPaymentList().stream()
+	// .map(c -> Optional.ofNullable(c.getAmount()).orElse(BigDecimal.ZERO))
+	// .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+	// BigDecimal totalActualPaid = totalPaid.add(totalCreditPaid);
+	// BigDecimal newPending =
+	// newGrandTotal.subtract(totalActualPaid).max(BigDecimal.ZERO);
+
+	// // If new total is MORE than old
+	// if (difference.compareTo(BigDecimal.ZERO) > 0) {
+	// // Increase pending amount
+	// //BigDecimal newPending = estimate.getPendingAmount().add(difference);
+	// estimate.setPendingAmount(newPending);
+
+	// // Mark as credit
+	// estimate.setCreditFlag(true);
+	// estimate.setCreditSettledFlag(false);
+
+	// // This is a bill reopen scenario. The flag is ADD because there is payments
+	// // with credit mode are ignored for any flags.
+	// // At UI side this extra amount goes as credit with add flag, but user will
+	// // change it to CASH or UPI etc and saved with ADD flag to include as new
+	// // payment
+	// estimate = utilService.updatePaymentListForCreditEstimate(estimate,
+	// newPending);
+
+	// } else {
+	// // Overpayment: try to reduce credit payments first
+	// //BigDecimal overpaid = difference.abs(); // positive amount to reduce
+	// BigDecimal overpaid = totalActualPaid.subtract(newGrandTotal);
+
+	// if (overpaid.compareTo(BigDecimal.ZERO) <= 0) {
+	// estimate.setPendingAmount(newPending);
+
+	// boolean hasCredit = estimate.getPaymentSplitList().stream()
+	// .anyMatch(p -> "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
+
+	// estimate.setCreditFlag(hasCredit);
+	// estimate.setCreditSettledFlag(hasCredit &&
+	// newPending.compareTo(BigDecimal.ZERO) == 0);
+
+	// estimate = utilService.updatePaymentListForCreditEstimate(estimate,
+	// newPending);
+
+	// } else {
+
+	// // Remove from creditPaymentList (latest first)
+	// List<CreditPayment> creditPayments =
+	// Optional.ofNullable(estimate.getCreditPaymentList())
+	// .orElse(new ArrayList<>());
+	// creditPayments.sort(Comparator.comparing(CreditPayment::getCreditDate).reversed());
+
+	// Iterator<CreditPayment> cpIterator = creditPayments.iterator();
+	// while (cpIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
+	// CreditPayment cp = cpIterator.next();
+	// BigDecimal amt = cp.getAmount();
+
+	// if (overpaid.compareTo(amt) >= 0) {
+	// overpaid = overpaid.subtract(amt);
+	// cpIterator.remove(); // remove entire payment
+
+	// // inform payment service
+	// paymentsService.deleteById(cp.getPaymentId());
+	// } else {
+	// cp.setAmount(amt.subtract(overpaid));
+	// overpaid = BigDecimal.ZERO;
+
+	// // inform payment service
+	// Payments payments = paymentsService.findById(cp.getPaymentId());
+
+	// // record modified payments.
+	// payments = paymentsService.recordModifiedPayments(cp.getAmount(), payments);
+
+	// payments.setPaymentAmount(cp.getAmount());
+	// payments.setPaymentMode(cp.getPaymentMode());
+	// paymentsService.save(payments);
+	// }
+	// }
+
+	// // Remove from paymentSplitList (excluding CREDIT)
+	// List<PaymentSplit> splits =
+	// Optional.ofNullable(estimate.getPaymentSplitList())
+	// .orElse(new ArrayList<>());
+	// splits.sort(Comparator.comparing(PaymentSplit::getPaymentAmount).reversed());
+
+	// Iterator<PaymentSplit> psIterator = splits.iterator();
+	// while (psIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
+	// PaymentSplit ps = psIterator.next();
+	// if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
+	// continue;
+
+	// BigDecimal amt = ps.getPaymentAmount();
+	// if (overpaid.compareTo(amt) >= 0) {
+	// overpaid = overpaid.subtract(amt);
+	// psIterator.remove();
+
+	// // inform payment service
+	// paymentsService.deleteById(ps.getPaymentId());
+	// } else {
+	// ps.setPaymentAmount(amt.subtract(overpaid));
+	// overpaid = BigDecimal.ZERO;
+
+	// // inform payment service
+	// Payments payments = paymentsService.findById(ps.getPaymentId());
+
+	// // record modified payments.
+	// payments = paymentsService.recordModifiedPayments(ps.getPaymentAmount(),
+	// payments);
+
+	// payments.setPaymentAmount(ps.getPaymentAmount());
+	// payments.setPaymentMode(ps.getPaymentMode());
+	// paymentsService.save(payments);
+	// }
+	// }
+
+	// // Recalculate total paid after adjustment
+	// totalPaid = splits.stream().filter(p ->
+	// !"CREDIT".equalsIgnoreCase(p.getPaymentMode()))
+	// .map(p -> Optional.ofNullable(p.getPaymentAmount()).orElse(BigDecimal.ZERO))
+	// .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+	// totalCreditPaid = creditPayments.stream()
+	// .map(p -> Optional.ofNullable(p.getAmount()).orElse(BigDecimal.ZERO))
+	// .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+	// totalActualPaid = totalPaid.add(totalCreditPaid);
+
+	// // New pending
+	// newPending = newGrandTotal.subtract(totalActualPaid).max(BigDecimal.ZERO);
+	// estimate.setPendingAmount(newPending.max(BigDecimal.ZERO)); // no negative
+	// pending
+
+	// // Credit flags
+	// boolean hasCredit = splits.stream().anyMatch(p ->
+	// "CREDIT".equalsIgnoreCase(p.getPaymentMode()));
+
+	// estimate.setCreditFlag(hasCredit);
+	// estimate.setCreditSettledFlag(hasCredit &&
+	// newPending.compareTo(BigDecimal.ZERO) == 0);
+
+	// estimate = utilService.updatePaymentListForCreditEstimate(estimate,
+	// newPending);
+	// }
+	// }
+
+	// // Save back the updated estimate (pseudo code - use repo)
+	// estimateRepository.save(estimate);
+	// }
 
 	public void recalculateAndUpdateEstimate(JobSpares jobSpares) throws Exception {
 		Estimate estimate = estimateRepository.findById(jobSpares.getEstimateObjId())
@@ -1988,7 +2036,7 @@ public class JobCardService {
 				.kiloMeters(fastJobCard.kiloMeters())
 				.jobStatus("OPEN")
 				.build();
-		
+
 		jobCard = save(jobCard);
 
 		JobSpares jobSpares = JobSpares.builder()
@@ -1999,7 +2047,7 @@ public class JobCardService {
 				.build();
 
 		jobSpares = updateJobSpares(jobSpares);
-		
+
 		jobCard.setJobStatus("CLOSED");
 		jobCard = updateJobStatus(jobCard);
 

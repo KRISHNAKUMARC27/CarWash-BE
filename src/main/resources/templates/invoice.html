@@ -3,6 +3,12 @@
 
 <head>
 	<style>
+		@page {
+			@bottom-right {
+				content: "Page " counter(page) " of " counter(pages) " | Invoice: [[${invoiceNo}]]";
+			}
+		}
+
 		body {
 			font-family: Arial, sans-serif;
 			font-size: 12px;
@@ -40,6 +46,10 @@
 			line-height: 1.0;
 			margin-top: -10px;
 			margin-bottom: 0px;
+		}
+
+		.text-center {
+			text-align: center;
 		}
 
 		.header-row {
@@ -97,9 +107,10 @@
 			text-align: right;
 		}
 
+		/* 
 		.nested-table tbody tr:nth-child(odd) {
 			background-color: #f9f9f9;
-		}
+		} */
 
 		.page-break {
 			page-break-before: always;
@@ -126,11 +137,34 @@
 			margin-top: 10px;
 			padding: 10px;
 		}
-		
+
+		.section-footer {
+			page-break-inside: avoid;
+			break-inside: avoid;
+		}
 	</style>
 </head>
 
 <body>
+	<div style="
+    position: fixed;
+    top: 45%;
+    width: 100%;
+    text-align: center;
+    font-size: 70px;
+    font-weight: bold;
+    color: #cccccc;
+    -fs-transform: rotate(-45deg);
+    transform: rotate(-45deg);
+    opacity: 0.15;
+    z-index: -1;
+    pointer-events: none;">
+		<span th:text="${paymentStatus}">PAID</span>
+	</div>
+
+
+	<p class="text-center" style="margin-bottom: 0px;">INVOICE</p>
+
 	<table class="outer-border">
 		<tr class="header-row">
 			<td colspan="2">
@@ -250,79 +284,89 @@
 				</table>
 			</td>
 		</tr>
-
 		<tr>
-			<td colspan="2" class="net-amount">
-				Net Amount : <span th:text="${netAmount}"></span>
-			</td>
-		</tr>
+			<td colspan="2">
+				<div class="section-footer">
+					<table style="width: 100%;">
+						<tr>
+							<td colspan="2" class="net-amount">
+								Net Amount : <span th:text="${netAmount}"></span>
+							</td>
+						</tr>
 
-		<tr>
-			<td colspan="2" class="section">
-				<strong>Amount in Words:</strong> <strong th:text="${amountInWords}"></strong>
-			</td>
-		</tr>
+						<tr>
+							<td colspan="2" class="section">
+								<strong>Amount in Words:</strong> <strong th:text="${amountInWords}"></strong>
+							</td>
+						</tr>
 
-		<tr>
-			<td colspan="2" class="section">
-				<table>
-					<tbody>
 						<tr>
-							<td><strong>Bank</strong></td>
-							<td>KARUR VYSYA BANK</td>
+							<td colspan="2" class="section">
+								<table>
+									<tbody>
+										<tr>
+											<td><strong>Bank</strong></td>
+											<td>KARUR VYSYA BANK</td>
+										</tr>
+										<tr>
+											<td><strong>A/C No</strong></td>
+											<td>1217135000002223</td>
+										</tr>
+										<tr>
+											<td><strong>Branch</strong></td>
+											<td>METTUKADAI</td>
+										</tr>
+										<tr>
+											<td><strong>IFSC</strong></td>
+											<td>KVBL0001217</td>
+										</tr>
+									</tbody>
+								</table>
+							</td>
 						</tr>
-						<tr>
-							<td><strong>A/C No</strong></td>
-							<td>1217135000002223</td>
-						</tr>
-						<tr>
-							<td><strong>Branch</strong></td>
-							<td>METTUKADAI</td>
-						</tr>
-						<tr>
-							<td><strong>IFSC</strong></td>
-							<td>KVBL0001217</td>
-						</tr>
-					</tbody>
-				</table>
-			</td>
-		</tr>
 
-		<tr>
-			<td colspan="2" class="section">
-				<table style="width: 100%;">
-					<tr>
-						<td style="width: 70%;">
-							<table class="termsConditions">
-								<tr>
-									<td><strong>TERMS AND CONDITIONS</strong></td>
-								</tr>
-								<tr>
-									<td>1. No claims are entertained unless brought to our notice in writing within two
-										days on receipt of goods</td>
-								</tr>
-								<tr>
-									<td>2. Interest at 24% will be charged on overdue payment -- Payment within 7 days
-									</td>
-								</tr>
-								<tr>
-									<td>3. We are not responsible for breakage or damage in transit</td>
-								</tr>
-								<tr>
-									<td>4. Transit insurance if any is to be taken by the buyer</td>
-								</tr>
-								<tr>
-									<td>5. Subject to Erode jurisdiction</td> 	
-								</tr>
-							</table>
-						</td>
-						<td style="text-align: right; vertical-align: bottom;">
-							<p><strong>For CAR SQUARE</strong></p>
-							<br></br><br></br><br></br>
-							<p><strong>Authorised Signature</strong></p>
-						</td>
-					</tr>
-				</table>
+						<tr>
+							<td colspan="2" class="section">
+								<table style="width: 100%;">
+									<tr>
+										<td style="width: 70%;">
+											<table class="termsConditions">
+												<tr>
+													<td><strong>TERMS AND CONDITIONS</strong></td>
+												</tr>
+												<tr>
+													<td>1. No claims are entertained unless brought to our notice in
+														writing within two
+														days on receipt of goods</td>
+												</tr>
+												<tr>
+													<td>2. Interest at 24% will be charged on overdue payment -- Payment
+														within 7 days
+													</td>
+												</tr>
+												<tr>
+													<td>3. We are not responsible for breakage or damage in transit</td>
+												</tr>
+												<tr>
+													<td>4. Transit insurance if any is to be taken by the buyer</td>
+												</tr>
+												<tr>
+													<td>5. Subject to Erode jurisdiction</td>
+												</tr>
+											</table>
+										</td>
+										<td style="text-align: right; vertical-align: bottom;">
+											<p><strong>For CAR SQUARE</strong></p>
+											<br></br><br></br><br></br>
+											<p><strong>Authorised Signature</strong></p>
+										</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+
+					</table>
+				</div>
 			</td>
 		</tr>
 	</table>

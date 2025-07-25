@@ -45,6 +45,11 @@ public class PdfUtils {
 		// Convert HTML to PDF
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 		ITextRenderer renderer = new ITextRenderer();
+
+		//Required for page counters to work
+		renderer.getSharedContext().setPrint(true);
+		renderer.getSharedContext().setInteractive(false); // Optional: disables links/forms
+
 		renderer.setDocumentFromString(htmlContent);
 		renderer.layout();
 		renderer.createPDF(outputStream);
