@@ -46,8 +46,13 @@ public class JobCardController {
 	}
 
 	@PostMapping("/fastjobCard")
-	public JobCard createFastJobCard(@RequestBody FastJobCardRecord jobCard) throws Exception {
-		return jobCardService.createFastJobCard(jobCard);
+	public ResponseEntity<?> createFastJobCard(@RequestBody FastJobCardRecord jobCard) {
+		try {
+			return ResponseEntity.ok().body(jobCardService.createFastJobCard(jobCard));
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			return ResponseEntity.badRequest().body(ex.getMessage());
+		}
 	}
 
 	@GetMapping("/status/{status}")

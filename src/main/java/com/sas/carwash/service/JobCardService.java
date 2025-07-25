@@ -267,7 +267,7 @@ public class JobCardService {
 			// Loop through the incoming job spares list
 			for (JobSparesInfo jobSparesInfo : jobSparesInfoList) {
 				SparesInventory spares = sparesService.findById(jobSparesInfo.getSparesId());
-				SparesInventory origspares = sparesService.findById(jobSparesInfo.getSparesId());
+				SparesInventory origspares = sparesService.findById(jobSparesInfo.getSparesId()); //TODO DEEP CLONE CAN BE DONE HERE
 				if (spares == null) {
 					throw new Exception("Spares ID " + jobSparesInfo.getSparesId() + " not found in inventory.");
 				}
@@ -437,7 +437,7 @@ public class JobCardService {
 		return jobSpares;
 	}
 
-	public synchronized JobCard updateJobStatus(JobCard jobCard) throws Exception {
+	public synchronized JobCard updateJobStatus(JobCard jobCard) {
 		JobCard origJobCard = jobCardRepository.findById(jobCard.getId()).orElse(null);
 		if (origJobCard != null && !origJobCard.getJobStatus().equals("CLOSED")) {
 			if (jobCard.getJobStatus().equals("CLOSED")) {
@@ -511,7 +511,7 @@ public class JobCardService {
 		return origJobSpares;
 	}
 
-	private void calculateTotals(JobSpares origJobSpares) throws Exception {
+	private void calculateTotals(JobSpares origJobSpares) {
 		// Calculate total spares value
 		BigDecimal totalSparesValue = origJobSpares.getJobSparesInfo() != null
 				? origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getAmount).filter(Objects::nonNull)
@@ -531,9 +531,9 @@ public class JobCardService {
 		origJobSpares.setTotalSparesValue(totalSparesValue);
 
 		// Validate the grand total//TODO CHECK IF BELOW LINE IS CORRECT ??
-		if (origJobSpares.getGrandTotal() != null && !grandTotal.equals(origJobSpares.getGrandTotal())) {
-			throw new Exception("Total amount calculation is wrong in UI");
-		}
+		// if (origJobSpares.getGrandTotal() != null && !grandTotal.equals(origJobSpares.getGrandTotal())) {
+		// 	throw new Exception("Total amount calculation is wrong in UI");
+		// }
 
 		BigDecimal totalGstSparesValue = origJobSpares.getJobSparesInfo() != null
 				? origJobSpares.getJobSparesInfo().stream().map(JobSparesInfo::getGstAmount).filter(Objects::nonNull)
@@ -1988,6 +1988,7 @@ public class JobCardService {
 				.kiloMeters(fastJobCard.kiloMeters())
 				.jobStatus("OPEN")
 				.build();
+		
 		jobCard = save(jobCard);
 
 		JobSpares jobSpares = JobSpares.builder()
@@ -1998,7 +1999,7 @@ public class JobCardService {
 				.build();
 
 		jobSpares = updateJobSpares(jobSpares);
-
+		
 		jobCard.setJobStatus("CLOSED");
 		jobCard = updateJobStatus(jobCard);
 
