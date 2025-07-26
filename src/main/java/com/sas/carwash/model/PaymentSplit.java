@@ -17,6 +17,6 @@ public class PaymentSplit {
 	private String paymentMode;
 	private LocalDateTime paymentDate;
 
-	private String paymentId;
+	private String paymentId; // trakcs paymentIds or servicePackageIds too
 	private String flag; // M - modify , D - delete, A - add
 }

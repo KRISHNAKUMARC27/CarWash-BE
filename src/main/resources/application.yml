@@ -5,5 +5,5 @@ spring:
     allow-circular-references: true
     
 config:
-  paymentModes: CASH, UPI, CREDIT, CARD(CREDIT), CARD(DEBIT), BANK TRANSFER
+  paymentModes: CASH, UPI, CREDIT, CARD(CREDIT), CARD(DEBIT), BANK TRANSFER, PACKAGE
   leaveType: SICK, CASUAL, EARNED, UNPAID

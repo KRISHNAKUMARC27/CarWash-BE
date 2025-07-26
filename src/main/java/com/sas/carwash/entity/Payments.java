@@ -34,4 +34,5 @@ public class Payments implements Serializable {
 	private Boolean isDeleted; //payment deleted due to jobcard modifications.
 	//private String paymentModified; //this can during jobcard reopen and some entries are removed, modified. TODO
 	private List<PaymentModification> modifiedPayments;
+	private String info; //some placeholder
 }

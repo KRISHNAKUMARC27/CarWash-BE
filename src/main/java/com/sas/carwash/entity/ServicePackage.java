@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
 
+import org.springframework.cglib.core.Local;
 import org.springframework.data.annotation.Id;
 
 import lombok.AllArgsConstructor;
@@ -23,12 +24,14 @@ public class ServicePackage implements Serializable {
     @Id
     private String id;
 
-    private String name; 
+    private String customerName; 
     private String phone;  // this is the package key
     private BigDecimal amount;
+    private String paymentMode;
     private LocalDate date;
+    private LocalDate creationDate;
     private String status; //OPEN  CLOSED
 
-    private Map<Integer, BigDecimal> jobIdToDeductedAmount; // Based on grandTotal 
+    private Map<Integer, BigDecimal> jobIdToDeductedAmount; 
 
 }

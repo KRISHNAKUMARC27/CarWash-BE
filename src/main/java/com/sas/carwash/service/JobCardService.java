@@ -360,13 +360,14 @@ public class JobCardService {
 
 		jobSpares = calculateGrandTotal(jobSpares);
 		jobSpares = calculateGSTAndUpdateFields(jobSpares);
-		jobSpares = jobSparesRepository.save(jobSpares);
 
 		// CHECK IF INVOICE ID OR ESTIMATE ID IS SET. If yes, then re-estimate them.
 		if (jobSpares.getEstimateObjId() != null)
 			recalculateAndUpdateEstimate(jobSpares);
 		else if (jobSpares.getInvoiceObjId() != null)
 			recalculateAndUpdateInvoice(jobSpares);
+
+		jobSpares = jobSparesRepository.save(jobSpares);
 
 		return jobSpares;
 	}
@@ -512,7 +513,6 @@ public class JobCardService {
 	// throw new Exception("Total amount calculation is wrong in UI");
 	// }
 	// }
-
 
 	// private void calculateTotals(JobSpares origJobSpares) {
 	// // Calculate total spares value
@@ -1346,8 +1346,16 @@ public class JobCardService {
 		BigDecimal roundOff = rounded.subtract(invoice.getGrandTotal());
 		data.put("roundOff", roundOff);
 
-		data.put("netAmount", invoice.getGrandTotal());
-		data.put("amountInWords", NumberToWordsConverter.convert(invoice.getGrandTotal()));
+		// data.put("netAmount", invoice.getGrandTotal());
+		// data.put("amountInWords", NumberToWordsConverter.convert(invoice.getGrandTotal()));
+		BigDecimal grandTotal = invoice.getGrandTotal();
+		BigDecimal packageAmount = Optional.ofNullable(jobSpares.getPackageDeductedAmount()).orElse(BigDecimal.ZERO);
+		BigDecimal netPayable = grandTotal.subtract(packageAmount).setScale(2, RoundingMode.HALF_UP);
+
+		data.put("grandTotal", grandTotal); // if you want to display total as well
+		data.put("packageAmount", packageAmount);
+		data.put("netAmount", netPayable);
+		data.put("amountInWords", NumberToWordsConverter.convert(netPayable));
 
 		BigDecimal pending = invoice.getPendingAmount();
 		BigDecimal total = invoice.getGrandTotal();
@@ -1488,8 +1496,16 @@ public class JobCardService {
 		data.put("vehicle", jobCard.getVehicleName());
 		data.put("nextServiceKms", jobCard.getKiloMeters() != null ? jobCard.getKiloMeters() + 3000 : null);
 
-		data.put("netAmount", estimate.getGrandTotal());
-		data.put("amountInWords", NumberToWordsConverter.convert(estimate.getGrandTotal()));
+		// data.put("netAmount", estimate.getGrandTotal());
+		// data.put("amountInWords", NumberToWordsConverter.convert(estimate.getGrandTotal()));
+		BigDecimal grandTotal = estimate.getGrandTotal();
+		BigDecimal packageAmount = Optional.ofNullable(jobSpares.getPackageDeductedAmount()).orElse(BigDecimal.ZERO);
+		BigDecimal netPayable = grandTotal.subtract(packageAmount).setScale(2, RoundingMode.HALF_UP);
+
+		data.put("grandTotal", grandTotal); // if you want to display total as well
+		data.put("packageAmount", packageAmount);
+		data.put("netAmount", netPayable);
+		data.put("amountInWords", NumberToWordsConverter.convert(netPayable));
 
 		int count = 1;
 		BigDecimal totalQty = BigDecimal.ZERO;
@@ -1834,10 +1850,34 @@ public class JobCardService {
 				Iterator<PaymentSplit> psIterator = splits.iterator();
 				while (psIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
 					PaymentSplit ps = psIterator.next();
-					if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
+					// if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
+					// 	continue;
+
+					// BigDecimal amt = ps.getPaymentAmount();
+					String mode = ps.getPaymentMode();
+					BigDecimal amt = Optional.ofNullable(ps.getPaymentAmount()).orElse(BigDecimal.ZERO);
+
+					if ("CREDIT".equalsIgnoreCase(mode))
 						continue;
 
-					BigDecimal amt = ps.getPaymentAmount();
+					if ("PACKAGE".equalsIgnoreCase(mode)) {
+						// Don't remove the PACKAGE split, but refund overpaid amount to ServicePackage
+						BigDecimal refund = overpaid.min(amt);
+
+						servicePackageService.refundPackageAmount(ps.getPaymentId(), refund, estimate.getJobId());
+						refundJobSparesPackage(jobSpares, refund);
+
+						ps.setPaymentAmount(amt.subtract(refund));
+						overpaid = overpaid.subtract(refund);
+
+						// If the package split becomes zero, we can choose to remove or keep it with 0
+						if (ps.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
+							psIterator.remove(); // or keep it with 0 amount if needed
+						}
+
+						continue;
+					}
+
 					if (overpaid.compareTo(amt) >= 0) {
 						overpaid = overpaid.subtract(amt);
 						psIterator.remove();
@@ -1959,10 +1999,30 @@ public class JobCardService {
 				Iterator<PaymentSplit> psIterator = splits.iterator();
 				while (psIterator.hasNext() && overpaid.compareTo(BigDecimal.ZERO) > 0) {
 					PaymentSplit ps = psIterator.next();
-					if ("CREDIT".equalsIgnoreCase(ps.getPaymentMode()))
+					String mode = ps.getPaymentMode();
+					BigDecimal amt = Optional.ofNullable(ps.getPaymentAmount()).orElse(BigDecimal.ZERO);
+
+					if ("CREDIT".equalsIgnoreCase(mode))
 						continue;
 
-					BigDecimal amt = ps.getPaymentAmount();
+					if ("PACKAGE".equalsIgnoreCase(mode)) {
+						// Don't remove the PACKAGE split, but refund overpaid amount to ServicePackage
+						BigDecimal refund = overpaid.min(amt);
+
+						servicePackageService.refundPackageAmount(ps.getPaymentId(), refund, invoice.getJobId());
+						refundJobSparesPackage(jobSpares, refund);
+
+						ps.setPaymentAmount(amt.subtract(refund));
+						overpaid = overpaid.subtract(refund);
+
+						// If the package split becomes zero, we can choose to remove or keep it with 0
+						if (ps.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
+							psIterator.remove(); // or keep it with 0 amount if needed
+						}
+
+						continue;
+					}
+
 					if (overpaid.compareTo(amt) >= 0) {
 						overpaid = overpaid.subtract(amt);
 						psIterator.remove();
@@ -2009,6 +2069,17 @@ public class JobCardService {
 
 		// Step 8: Save updated invoice
 		invoiceRepository.save(invoice);
+	}
+
+	private void refundJobSparesPackage(JobSpares jobSpares, BigDecimal refundAmount) {
+		BigDecimal current = Optional.ofNullable(jobSpares.getPackageDeductedAmount()).orElse(BigDecimal.ZERO);
+		BigDecimal newAmount = current.subtract(refundAmount);
+
+		if (newAmount.compareTo(BigDecimal.ZERO) < 0) {
+			newAmount = BigDecimal.ZERO; // safeguard
+		}
+
+		jobSpares.setPackageDeductedAmount(newAmount);
 	}
 
 	public JobCard saveFullJobCard(FullJobCardRecord fullJobCard) throws Exception {

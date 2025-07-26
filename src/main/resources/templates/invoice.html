@@ -288,12 +288,23 @@
 			<td colspan="2">
 				<div class="section-footer">
 					<table style="width: 100%;">
-						<tr>
+						<!-- Show only if packageAmount is present and > 0 -->
+						<tr th:if="${packageAmount != null and packageAmount > 0}">
 							<td colspan="2" class="net-amount">
-								Net Amount : <span th:text="${netAmount}"></span>
+								Total Invoice Amount : ₹<span th:text="${grandTotal}"></span>
 							</td>
 						</tr>
 
+						<tr th:if="${packageAmount != null and packageAmount > 0}">
+							<td colspan="2" class="net-amount">
+								Package Amount Used : ₹<span th:text="${packageAmount}"></span>
+							</td>
+						</tr>
+						<tr>
+							<td colspan="2" class="net-amount">
+								Net Amount : ₹<span th:text="${netAmount}"></span>
+							</td>
+						</tr>
 						<tr>
 							<td colspan="2" class="section">
 								<strong>Amount in Words:</strong> <strong th:text="${amountInWords}"></strong>

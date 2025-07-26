@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -102,37 +103,44 @@ public class UtilService {
     }
 
     public JobSpares findByIdJobSpares(String id) {
-		return jobSparesRepository.findById(id).orElse(null);
-	}
+        return jobSparesRepository.findById(id).orElse(null);
+    }
 
-	public JobSpares simpleSaveJobSpares(JobSpares jobSpares) {
-		return jobSparesRepository.save(jobSpares);
-	}
+    public JobSpares simpleSaveJobSpares(JobSpares jobSpares) {
+        return jobSparesRepository.save(jobSpares);
+    }
 
     public Invoice updatePaymentListForCreditInvoice(Invoice invoice, BigDecimal newPending) {
+        if (BigDecimal.ZERO.compareTo(newPending) == 0) {
+            return invoice; // No pending credit, skip modification
+        }
 
-		PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
-				.paymentDate(LocalDateTime.now())
-				.build();
-		List<PaymentSplit> splitList = invoice.getPaymentSplitList();
-		// What we are doing here is we are trying to maintain only 1 CREDIT mode item
-		// in the payment list. Update with new Pending as CREDIT.
-		if (splitList != null && !splitList.isEmpty()) {
-			splitList = splitList.stream()
-					.filter(sp -> !"CREDIT".equals(sp.getPaymentMode()))
-					.collect(Collectors.toList());
+        PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
+                .paymentDate(LocalDateTime.now())
+                .build();
+        List<PaymentSplit> splitList = invoice.getPaymentSplitList();
+        // What we are doing here is we are trying to maintain only 1 CREDIT mode item
+        // in the payment list. Update with new Pending as CREDIT.
+        if (splitList != null && !splitList.isEmpty()) {
+            splitList = splitList.stream()
+                    .filter(sp -> !"CREDIT".equals(sp.getPaymentMode()))
+                    .collect(Collectors.toList());
 
-			splitList.add(split);
-			
-		} else {
-			splitList = new ArrayList<>();
-			splitList.add(split);
-		}
-		invoice.setPaymentSplitList(splitList);
-		return invoice;
-	}
+            splitList.add(split);
+
+        } else {
+            splitList = new ArrayList<>();
+            splitList.add(split);
+        }
+        invoice.setPaymentSplitList(splitList);
+        return invoice;
+    }
 
     public Estimate updatePaymentListForCreditEstimate(Estimate estimate, BigDecimal newPending) {
+        if (BigDecimal.ZERO.compareTo(newPending) == 0) {
+            return estimate; // No pending credit, skip modification
+        }
+        
         PaymentSplit split = PaymentSplit.builder().paymentAmount(newPending).paymentMode("CREDIT").flag("ADD")
                 .paymentDate(LocalDateTime.now())
                 .build();
@@ -153,4 +161,27 @@ public class UtilService {
         estimate.setPaymentSplitList(splitList);
         return estimate;
     }
+
+    public BigDecimal extractPackageDeductionAmount(List<PaymentSplit> paymentSplits) {
+        if (paymentSplits == null)
+            return BigDecimal.ZERO;
+
+        return paymentSplits.stream()
+                .filter(split -> "PACKAGE".equals(split.getPaymentMode()))
+                .map(split -> split.getPaymentAmount() != null ? split.getPaymentAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public String extractPackageDeductionPackageId(List<PaymentSplit> paymentSplits) {
+        if (paymentSplits == null)
+            return null;
+
+        return paymentSplits.stream()
+                .filter(split -> "PACKAGE".equalsIgnoreCase(split.getPaymentMode()))
+                .map(PaymentSplit::getPaymentId)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
 }

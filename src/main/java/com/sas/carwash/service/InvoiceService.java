@@ -23,6 +23,7 @@ import com.sas.carwash.entity.Invoice;
 import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.Payments;
+import com.sas.carwash.entity.ServicePackage;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
 import com.sas.carwash.model.PaymentSplit;
@@ -38,11 +39,12 @@ public class InvoiceService {
 
 	private final InvoiceRepository invoiceRepository;
 	private final UtilService utilService;
-    private final SpringTemplateEngine templateEngine;
+	private final SpringTemplateEngine templateEngine;
 	private final PaymentsService paymentsService;
-    
+	private final ServicePackageService servicePackageService;
+
 	public List<?> findAll() throws Exception {
-		//invoiceData();
+		// invoiceData();
 		return invoiceRepository.findAllByOrderByIdDesc();
 	}
 
@@ -73,10 +75,14 @@ public class InvoiceService {
 
 		for (PaymentSplit split : invoice.getPaymentSplitList()) {
 
+			if ("DELETE".equals(split.getFlag()) && "PACKAGE".equals(split.getPaymentMode())) {
+				throw new IllegalArgumentException("Cannot delete PACKAGE payment splits.");
+			}
+
 			if (split.getPaymentDate() == null)
 				split.setPaymentDate(LocalDateTime.now());
 
-			if (!"CREDIT".equals(split.getPaymentMode())) {
+			if (!"CREDIT".equals(split.getPaymentMode()) && !"PACKAGE".equals(split.getPaymentMode())) {
 				if ("ADD".equals(split.getFlag())) {
 					Payments payments = Payments.builder()
 							.paymentAmount(split.getPaymentAmount())
@@ -155,36 +161,91 @@ public class InvoiceService {
 		invoice = invoiceRepository.save(invoice);
 		jobCard.setInvoiceObjId(invoice.getId());
 		utilService.simpleSave(jobCard);
+
 		jobSpares.setInvoiceObjId(invoice.getId());
+		finalizePackageDeductionForInvoice(invoice, jobSpares);
 		utilService.simpleSaveJobSpares(jobSpares);
+		
 		return invoice;
+	}
+
+	public void finalizePackageDeductionForInvoice(Invoice invoice, JobSpares jobSpares) throws Exception {
+		BigDecimal newDeducted = utilService.extractPackageDeductionAmount(invoice.getPaymentSplitList());
+		String packageId = utilService.extractPackageDeductionPackageId(invoice.getPaymentSplitList());
+		BigDecimal previousDeducted = Optional.ofNullable(jobSpares.getPackageDeductedAmount()).orElse(BigDecimal.ZERO);
+
+		if (newDeducted.compareTo(BigDecimal.ZERO) <= 0 && previousDeducted.compareTo(BigDecimal.ZERO) <= 0) {
+			return; // Nothing to do
+		}
+
+		if (packageId == null || packageId.isBlank()) {
+			if (newDeducted.compareTo(BigDecimal.ZERO) > 0) {
+				throw new IllegalStateException("Missing service package ID for PACKAGE payment.");
+			}
+			return; // No package and nothing to refund
+		}
+
+		ServicePackage servicePackage = servicePackageService.findById(packageId);
+		if (servicePackage == null) {
+			if (newDeducted.compareTo(BigDecimal.ZERO) > 0) {
+				throw new IllegalStateException("No open service package found, but PACKAGE payment exists.");
+			}
+			return; // No package and nothing to refund
+		}
+
+		// Refund previously deducted amount
+		BigDecimal updatedAmount = servicePackage.getAmount().add(previousDeducted);
+
+		// Check and subtract new deduction
+		if (newDeducted.compareTo(updatedAmount) > 0) {
+			throw new IllegalStateException("Package deduction exceeds available package balance.");
+		}
+
+		updatedAmount = updatedAmount.subtract(newDeducted);
+		servicePackage.setAmount(updatedAmount);
+		
+		Map<Integer, BigDecimal> jobMap = Optional.ofNullable(servicePackage.getJobIdToDeductedAmount())
+				.orElse(new HashMap<>());
+
+		int jobId = jobSpares.getJobId(); // assuming this exists
+		BigDecimal existing = jobMap.getOrDefault(jobId, BigDecimal.ZERO);
+
+		if (existing.compareTo(newDeducted) != 0) {
+			jobMap.put(jobId, newDeducted);
+			servicePackage.setJobIdToDeductedAmount(jobMap);
+			servicePackageService.update(servicePackage);
+		}
+
+		// Reflect new deduction in jobSpares
+		jobSpares.setPackageDeductedAmount(newDeducted);
 	}
 
 	public Invoice findByJobObjId(String id) {
 		return invoiceRepository.findByJobObjId(id);
 	}
 
-	// public Invoice saveFastInvoice(JobCard jobCard, JobSpares jobSpares, FastJobCardRecord fastJobCard) throws Exception {
-	// 	Invoice invoice = Invoice.builder()
-	// 			.jobId(jobCard.getJobId())
-	// 			.ownerName(jobCard.getOwnerName())
-	// 			.ownerPhoneNumber(jobCard.getOwnerPhoneNumber())
-	// 			.vehicleRegNo(jobCard.getVehicleRegNo())
-	// 			.vehicleName(jobCard.getVehicleName())
-	// 			.grandTotal(jobSpares.getGrandTotalWithGST())
-	// 			.jobObjId(jobSpares.getId())
-	// 			.paymentSplitList(List.of(PaymentSplit.builder()
-	// 					.paymentAmount(jobSpares.getGrandTotalWithGST())
-	// 					.paymentMode(fastJobCard.paymentMode())
-	// 					.flag("ADD")
-	// 					.build()))
-	// 			.creditPaymentList(new ArrayList<>())
-	// 			.pendingAmount(BigDecimal.ZERO)
-	// 			.creditFlag(false)
-	// 			.creditSettledFlag(false)
-	// 			.build();
+	// public Invoice saveFastInvoice(JobCard jobCard, JobSpares jobSpares,
+	// FastJobCardRecord fastJobCard) throws Exception {
+	// Invoice invoice = Invoice.builder()
+	// .jobId(jobCard.getJobId())
+	// .ownerName(jobCard.getOwnerName())
+	// .ownerPhoneNumber(jobCard.getOwnerPhoneNumber())
+	// .vehicleRegNo(jobCard.getVehicleRegNo())
+	// .vehicleName(jobCard.getVehicleName())
+	// .grandTotal(jobSpares.getGrandTotalWithGST())
+	// .jobObjId(jobSpares.getId())
+	// .paymentSplitList(List.of(PaymentSplit.builder()
+	// .paymentAmount(jobSpares.getGrandTotalWithGST())
+	// .paymentMode(fastJobCard.paymentMode())
+	// .flag("ADD")
+	// .build()))
+	// .creditPaymentList(new ArrayList<>())
+	// .pendingAmount(BigDecimal.ZERO)
+	// .creditFlag(false)
+	// .creditSettledFlag(false)
+	// .build();
 
-	// 	return save(invoice);
+	// return save(invoice);
 	// }
 
 	public Map<String, String> multiCreditSettlement(MultiCreditPayment multiCreditPayment) throws Exception {
@@ -194,8 +255,9 @@ public class InvoiceService {
 			Invoice invoice = findById(id);
 			invoiceList.add(invoice);
 		}
-		
-		//Sort in ascending order of pending amount because lets try to close small fries earlier.
+
+		// Sort in ascending order of pending amount because lets try to close small
+		// fries earlier.
 		invoiceList.sort(Comparator.comparing(Invoice::getPendingAmount));
 
 		List<Invoice> deepCopiedInvoiceList = invoiceList.stream().map(Invoice::new).collect(Collectors.toList());
@@ -222,7 +284,7 @@ public class InvoiceService {
 				creditPayment.setPaymentId(payments.getId());
 
 				creditPaymentList.add(creditPayment);
-				
+
 				BigDecimal grandTotal = invoice.getGrandTotal();
 
 				BigDecimal totalPaidExcludingCredit = invoice.getPaymentSplitList().stream()
@@ -263,16 +325,20 @@ public class InvoiceService {
 			}
 		} catch (Exception ex) {
 			invoiceRepository.saveAll(deepCopiedInvoiceList);
-			//deepCopiedInvoiceList.stream().forEach(invoice -> invoiceRepository.save(invoice));
+			// deepCopiedInvoiceList.stream().forEach(invoice ->
+			// invoiceRepository.save(invoice));
 			throw new Exception("Rolled back changes. Error: " + ex.getMessage());
 		}
 		return response;
 	}
 
-	// This method is used to create a map of Invoices with value as the creditPayment amount.
-	// User could have paid less amount so use it on the lists 1 by 1. 
-	// If the settleamount is less than or equal to first invoice then break there itself.
-	// else keep subtracting the settleamount and update in the object itself. also fill the map.
+	// This method is used to create a map of Invoices with value as the
+	// creditPayment amount.
+	// User could have paid less amount so use it on the lists 1 by 1.
+	// If the settleamount is less than or equal to first invoice then break there
+	// itself.
+	// else keep subtracting the settleamount and update in the object itself. also
+	// fill the map.
 	private Map<Invoice, BigDecimal> calculateNecessaryCreditSettlementPerInvoice(List<Invoice> invoiceList,
 			MultiCreditPayment multiCreditPayment) {
 
@@ -294,23 +360,22 @@ public class InvoiceService {
 		return settleMap;
 
 	}
-	
-	
-	public void generateInvoicePdf(Map<String, Object> data, String outputPath) throws Exception {
-        // Render HTML with dynamic data
-        Context context = new Context();
-        context.setVariables(data);
-        String htmlContent = templateEngine.process("invoice", context);
 
-        // Convert HTML to PDF
-        try (OutputStream os = new FileOutputStream(outputPath)) {
-            ITextRenderer renderer = new ITextRenderer();
-            renderer.setDocumentFromString(htmlContent);
-            renderer.layout();
-            renderer.createPDF(os);
-        }
-    }
-	
+	public void generateInvoicePdf(Map<String, Object> data, String outputPath) throws Exception {
+		// Render HTML with dynamic data
+		Context context = new Context();
+		context.setVariables(data);
+		String htmlContent = templateEngine.process("invoice", context);
+
+		// Convert HTML to PDF
+		try (OutputStream os = new FileOutputStream(outputPath)) {
+			ITextRenderer renderer = new ITextRenderer();
+			renderer.setDocumentFromString(htmlContent);
+			renderer.layout();
+			renderer.createPDF(os);
+		}
+	}
+
 	// REPORT START
 	private Map<String, Object> processInvoice(List<Invoice> records) {
 		Map<String, Object> result = new HashMap<>();

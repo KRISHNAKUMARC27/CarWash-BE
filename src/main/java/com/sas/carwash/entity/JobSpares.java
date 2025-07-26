@@ -33,4 +33,6 @@ public class JobSpares {
 	private BigDecimal grandTotal;
 	private BigDecimal grandTotalWithGST;
 
+	private BigDecimal packageDeductedAmount;
+
 }

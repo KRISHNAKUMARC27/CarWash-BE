@@ -23,6 +23,7 @@ import com.sas.carwash.entity.Estimate;
 import com.sas.carwash.entity.JobCard;
 import com.sas.carwash.entity.JobSpares;
 import com.sas.carwash.entity.Payments;
+import com.sas.carwash.entity.ServicePackage;
 import com.sas.carwash.model.CreditPayment;
 import com.sas.carwash.model.MultiCreditPayment;
 import com.sas.carwash.model.PaymentSplit;
@@ -40,6 +41,7 @@ public class EstimateService {
 	private final UtilService utilService;
 	private final SpringTemplateEngine templateEngine;
 	private final PaymentsService paymentsService;
+	private final ServicePackageService servicePackageService;
 
 	public List<?> findAll() throws Exception {
 		// estimateData();
@@ -72,10 +74,14 @@ public class EstimateService {
 		}
 		for (PaymentSplit split : estimate.getPaymentSplitList()) {
 
+			if ("DELETE".equals(split.getFlag()) && "PACKAGE".equals(split.getPaymentMode())) {
+				throw new IllegalArgumentException("Cannot delete PACKAGE payment splits.");
+			}
+
 			if (split.getPaymentDate() == null)
 				split.setPaymentDate(LocalDateTime.now());
 
-			if (!"CREDIT".equals(split.getPaymentMode())) {
+			if (!"CREDIT".equals(split.getPaymentMode()) && !"PACKAGE".equals(split.getPaymentMode())) {
 				if ("ADD".equals(split.getFlag())) {
 					Payments payments = Payments.builder()
 							.paymentAmount(split.getPaymentAmount())
@@ -154,9 +160,63 @@ public class EstimateService {
 		estimate = estimateRepository.save(estimate);
 		jobCard.setEstimateObjId(estimate.getId());
 		utilService.simpleSave(jobCard);
+
 		jobSpares.setEstimateObjId(estimate.getId());
+		finalizePackageDeductionForEstimate(estimate, jobSpares);
 		utilService.simpleSaveJobSpares(jobSpares);
+		
 		return estimate;
+	}
+
+		public void finalizePackageDeductionForEstimate(Estimate estimate, JobSpares jobSpares) throws Exception {
+		BigDecimal newDeducted = utilService.extractPackageDeductionAmount(estimate.getPaymentSplitList());
+		String packageId = utilService.extractPackageDeductionPackageId(estimate.getPaymentSplitList());
+		BigDecimal previousDeducted = Optional.ofNullable(jobSpares.getPackageDeductedAmount()).orElse(BigDecimal.ZERO);
+
+		if (newDeducted.compareTo(BigDecimal.ZERO) <= 0 && previousDeducted.compareTo(BigDecimal.ZERO) <= 0) {
+			return; // Nothing to do
+		}
+
+		if (packageId == null || packageId.isBlank()) {
+			if (newDeducted.compareTo(BigDecimal.ZERO) > 0) {
+				throw new IllegalStateException("Missing service package ID for PACKAGE payment.");
+			}
+			return; // No package and nothing to refund
+		}
+
+		ServicePackage servicePackage = servicePackageService.findById(packageId);
+		if (servicePackage == null) {
+			if (newDeducted.compareTo(BigDecimal.ZERO) > 0) {
+				throw new IllegalStateException("No open service package found, but PACKAGE payment exists.");
+			}
+			return; // No package and nothing to refund
+		}
+
+		// Refund previously deducted amount
+		BigDecimal updatedAmount = servicePackage.getAmount().add(previousDeducted);
+
+		// Check and subtract new deduction
+		if (newDeducted.compareTo(updatedAmount) > 0) {
+			throw new IllegalStateException("Package deduction exceeds available package balance.");
+		}
+
+		updatedAmount = updatedAmount.subtract(newDeducted);
+		servicePackage.setAmount(updatedAmount);
+		
+		Map<Integer, BigDecimal> jobMap = Optional.ofNullable(servicePackage.getJobIdToDeductedAmount())
+				.orElse(new HashMap<>());
+
+		int jobId = jobSpares.getJobId(); // assuming this exists
+		BigDecimal existing = jobMap.getOrDefault(jobId, BigDecimal.ZERO);
+
+		if (existing.compareTo(newDeducted) != 0) {
+			jobMap.put(jobId, newDeducted);
+			servicePackage.setJobIdToDeductedAmount(jobMap);
+			servicePackageService.update(servicePackage);
+		}
+
+		// Reflect new deduction in jobSpares
+		jobSpares.setPackageDeductedAmount(newDeducted);
 	}
 
 	public Estimate findByJobObjId(String id) {
